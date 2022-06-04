@@ -2,10 +2,14 @@
 
 Debug
 Release
+Dependencies
 
 /SGGX_TAA/Debug
 /SGGX_TAA/Release
 
+*/.vscode/
+
 */chestnut
 
+*.swp
 *.zip
