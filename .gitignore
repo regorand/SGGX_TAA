@@ -1,0 +1,11 @@
+.vs
+
+Debug
+Release
+
+/SGGX_TAA/Debug
+/SGGX_TAA/Release
+
+*/chestnut
+
+*.zip
