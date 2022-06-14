@@ -1,6 +1,15 @@
+#define _BREAK_POINT  
+#ifdef _WIN32
+#define BREAK_POINT __debugbreak();
+#elif defined(unix) || defined(__unix__) || defined(__unix)
+# define BREAK_POINT 
+#endif
+
 #pragma once
 #include <GL/glew.h>
 #include <iostream>
+
+
 
 static void inline GLClearError()
 {
@@ -22,15 +31,15 @@ void inline GLAPIENTRY callBackFunc(GLenum source, GLenum type, GLuint id, GLenu
         //std::cout << "GL Message Callback Notification: " << m << std::endl;
         break;
     case GL_DEBUG_SEVERITY_LOW:
-        __debugbreak(); // Only works on msvc
+        _BREAK_POINT
         std::cout << "GL Message Callback Low Severity: " << m << std::endl;
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
-        __debugbreak(); // Only works on msvc
+        _BREAK_POINT
         std::cout << "GL Message Callback Medium Severity: " << m << std::endl;
         break;
     case GL_DEBUG_SEVERITY_HIGH:
-        __debugbreak(); // Only works on msvc
+        _BREAK_POINT
         std::cout << "GL Message Callback High Severity: " << m << std::endl;
         break;
     }

@@ -18,7 +18,7 @@ typedef struct params_s {
 	int num_ggx_samples = 4;
 	float ggx_param = 0.2f;
 	float rayMarchDist = 0.1f;
-	int rayMarchMaxSteps = 800;
+	int rayMarchMaxSteps = 80;
 } Parameters;
 
 extern Parameters parameters;

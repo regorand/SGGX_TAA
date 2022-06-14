@@ -16,6 +16,11 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
+CMake/
+SGGX_TAA/SGGX_TAA
+SGGX_TAA/cmakelists
+bin/
+lib/
 
 /SGGX_TAA/Debug
 /SGGX_TAA/Release

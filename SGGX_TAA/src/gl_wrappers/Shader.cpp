@@ -187,7 +187,7 @@ unsigned int Shader::compileShader(unsigned int type, const std::string& source)
 		int length;
 		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
 
-		char* message = (char*)_malloca(length * sizeof(char));
+		char* message = (char*) malloc(length * sizeof(char));
 
 		glGetShaderInfoLog(id, length, &length, message);
 
@@ -195,6 +195,9 @@ unsigned int Shader::compileShader(unsigned int type, const std::string& source)
 		std::cout << message << std::endl;
 
 		glDeleteShader(id);
+		
+		free(message);
+
 		return 0;
 	}
 

@@ -163,7 +163,7 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
     
     std::shared_ptr<VertexArray> va = std::make_shared<VertexArray>();
 
-    std::shared_ptr<ArrayBuffer> verts = std::make_shared<ArrayBuffer>(vertices.data(), vertices.size() * 3 * sizeof(float));
+    std::shared_ptr<ArrayBuffer> verts = std::make_shared<ArrayBuffer>(vertices.data(), vertices.size() * 3 * sizeof(float), true);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     glEnableVertexAttribArray(0);
 

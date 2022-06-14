@@ -44,9 +44,9 @@ float sphereSDF(vec3 center, float radius, vec3 point) {
 float sdf(vec3 current) {
     //return max(sphereSDF(vec3(0, 0, -3), 1, current), -sphereSDF(vec3(0, 1, -3), 1.8 , current));
     //return min(sphereSDF(vec3(0, 0, -3), 1, current), sphereSDF(vec3(1, 1, -3), 1, current));
-    //return sphereSDF(vec3(0, 0, -2), 0.9, current);
+    return sphereSDF(vec3(0, 0, -2), 0.9, current);
 
-    return subtract(boxSDF(current + vec3(0, 2, 0), vec3(1, 1, 1)), sphereSDF(vec3(0, 0, 0), 1.5, current));
+    //return subtract(boxSDF(current + vec3(0, 2, 0), vec3(1, 1, 1)), sphereSDF(vec3(0, 0, 0), 1.5, current));
 
 }
 
@@ -64,7 +64,8 @@ vec3 calculateNormal(vec3 position) {
                             sdf(position + vec3(0, 0, h)) - sdf(position - vec3(0, 0, h))));
 }
 
-void main() {    
+void main() {
+    out_color = vec4(0);
     vec3 sphere_color = vec3(1, 0, 0);
 
     vec3 ray_base = camera_pos;

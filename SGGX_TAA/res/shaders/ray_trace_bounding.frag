@@ -102,7 +102,7 @@ void main() {
     }
 
     float factor = clamp_to_0_1(t_far - t_near);
-    
+    out_color = vec4(0);
     
     ray_base = ray_base + t_near * ray_dir;
     vec3 center = getAABBCenter(cube); 
