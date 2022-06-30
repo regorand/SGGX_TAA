@@ -20,6 +20,7 @@ set(Header_Files
     "src/gl_wrappers/Shader.h"
     "src/gl_wrappers/Texture.h"
     "src/gl_wrappers/VertexArray.h"
+    "src/gl_wrappers/ShaderStorageBuffer.h"
     "src/Parameters.h"
     "src/Renderer/Camera.h"
     "src/Renderer/Light.h"
@@ -28,7 +29,11 @@ set(Header_Files
     "src/Renderer/Renderer.h"
     "src/Renderer/SceneController.h"
     "src/Renderer/SceneObject.h"
-    "src/Utils.h"
+    "src/geometry/Utils.h"
+    "src/geometry/mesh_object.h"
+    "src/geometry/OBJ_SGGX_Converter.h"
+    "src/geometry/SGGX_Distribution.h"
+    "src/geometry/VoxelGrid.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -43,6 +48,7 @@ set(Source_Files
     "src/gl_wrappers/Shader.cpp"
     "src/gl_wrappers/Texture.cpp"
     "src/gl_wrappers/VertexArray.cpp"
+    "src/gl_wrappers/ShaderStorageBuffer.cpp"
     "src/Parameters.cpp"
     "src/Renderer/Camera.cpp"
     "src/Renderer/Light.cpp"
@@ -51,7 +57,10 @@ set(Source_Files
     "src/Renderer/Renderer.cpp"
     "src/Renderer/SceneController.cpp"
     "src/Renderer/SceneObject.cpp"
-    "src/Utils.cpp"
+    "src/geometry/Utils.cpp"
+    "src/geometry/OBJ_SGGX_Converter.cpp"
+    "src/geometry/SGGX_Distribution.cpp"
+    "src/geometry/VoxelGrid.cpp"
 )
 source_group("Source Files" FILES ${Source_Files})
 

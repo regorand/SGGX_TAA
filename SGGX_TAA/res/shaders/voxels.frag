@@ -72,7 +72,7 @@ void main() {
     float factor = clamp_to_0_1(t_far - t_near);
     ray_base = ray_base + t_near * ray_dir;
     
-    float step_dist = voxel_size * 0.1;
+    float step_dist = voxel_size * 0.5;
     float eps_dist = voxel_size * 0.001;
     ray_base += ray_dir * eps_dist;
 
@@ -88,8 +88,6 @@ void main() {
 
     
     while (continueLoop(voxelIndex, dimension)) {
-        int diff_xy = int(sign(abs(voxelIndex.x - voxelIndex.y)));
-        int diff_xz = int(sign(abs(voxelIndex.x - voxelIndex.z)));
         voxel_data_object obj = data[int(voxelIndex.x) + int(voxelIndex.y) * dimension + int(voxelIndex.z) * dimension * dimension];
         //out_color += (1 - diff_xy) * (1 - diff_xz) * vec4(1, 1, 1, 0);
         float val = obj.value;

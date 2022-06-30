@@ -39,8 +39,8 @@ bool SceneController::init()
     Mesh_Object_t mesh_left;
     Mesh_Object_t mesh_right;
 
-    //bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
-    bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
+    bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
+    //bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
 
     bool res2 = loadObjMesh(model_dir_sphere, model_name_sphere, mesh_right, ShadingType::SMOOTH);
 

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <inttypes.h>
 #include <glm/glm.hpp>
+#include <memory>
 
 #include "../gl_wrappers/ShaderStorageBuffer.h"
 
