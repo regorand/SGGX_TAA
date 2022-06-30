@@ -15,6 +15,7 @@ uniform int dimension;
 uniform float voxel_size;
 uniform vec3 lower;
 uniform vec3 higher;
+uniform int output_type;
 
 uniform vec3 camera_pos;
 
@@ -70,9 +71,12 @@ void main() {
     }
 
     float factor = clamp_to_0_1(t_far - t_near);
+    if (factor == 0) {
+        discard;
+    }
     ray_base = ray_base + t_near * ray_dir;
     
-    float step_dist = voxel_size * 0.5;
+    float step_dist = voxel_size * 0.1;
     float eps_dist = voxel_size * 0.001;
     ray_base += ray_dir * eps_dist;
 
@@ -84,7 +88,7 @@ void main() {
     voxelIndex.y = min(voxelIndex.y, dimension - 1);
     voxelIndex.z = min(voxelIndex.z, dimension - 1);
     */
-    vec3 up = vec3(0, 1, 0);
+    vec3 up = normalize(vec3(0, 1, 0));
 
     
     while (continueLoop(voxelIndex, dimension)) {
@@ -93,9 +97,21 @@ void main() {
         float val = obj.value;
         if (val == 1) {
             vec3 normal = vec3(obj.x, obj.y, obj.z);
-            out_color = vec4(vec3(dot(normal, up)), 1);
-            out_color = vec4(abs(normal), 1);
-            //out_color = vec4(1);
+            if (output_type == 0) {
+                out_color = vec4(1);
+            } else if (output_type == 1) {
+                out_color = vec4(vec3(dot(normal, up)), 1);
+            } else if (output_type == 2) {
+                out_color = vec4(normal, 1);
+            } else if (output_type == 3) {
+                out_color = vec4(abs(normal), 1);
+            } else if (output_type == 4) {
+                out_color = vec4(world_pos.xyz / world_pos.w, 1);
+            } else if (output_type == 5) {
+                out_color = factor * vec4(voxelIndex / dimension, 1);
+            }
+            
+            //
             break;
         }
         ray_base += ray_dir * step_dist;
@@ -109,16 +125,6 @@ void main() {
     //nexts = sqrt(sqrt(nexts));
     float maxVal = max(max(nexts.x, nexts.y), nexts.z);
     float minVal = min(min(nexts.x, nexts.y), nexts.z);
-
-    float maxFrac = max(max(frac.x, frac.y), frac.z);
-    if (maxFrac < 0.2) {
-        //out_color = vec4(0);
-    } else {
-        //out_color = vec4(1);
-    }
-    //out_color = vec4(normalize(frac), 1);
-    //out_color = vec4(normalize(nexts), 1);
-
     
     //out_color = factor * vec4(voxelIndex / dimension, 1);
 
@@ -147,13 +153,12 @@ void main() {
         
         if (next != 3) {
             voxelIndex[next] += signs[next];
-            //t_near = nexts[next];
             nexts[next] += abs_deltas[next];
         }
     }
     */
 
-    out_color *= factor;
+    //out_color *= factor;
     //out_color = vec4(factor, factor, factor, 1);
     //out_color = factor * vec4(count, count, count, 1) / 40;
     //out_color = factor * vec4(voxelIndex / dimension, 1);

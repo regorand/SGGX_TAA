@@ -99,6 +99,10 @@ void doImgGui(SceneController controller) {
         ImGui::Begin("Hello, world!");
 
         ImGui::SliderFloat("Camera Dist Root", &parameters.camera_dist, 0.5f, 30.0f);
+
+        ImGui::Combo("Shader Output type", &parameters.current_shader_output, shader_output_items, shader_output_count);
+
+
         if (ImGui::Button("reload shaders")) {
             controller.reloadShaders();
         }
@@ -108,6 +112,8 @@ void doImgGui(SceneController controller) {
             parameters.rotation[1] = 0;
             parameters.rotation[2] = 0;
         }
+
+        
 
         /*
         ImGui::SliderFloat("Light: Polar Angle", &parameters.light_direction[0], 0, glm::two_pi<float>());

@@ -84,6 +84,8 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	object->getVertexArray()->bind();
 	object->getArrayBuffer()->bind();
 	object->getShader()->bind();
+
+	object->getShader()->setUniform1i("output_type", parameters.current_shader_output);
 	/*
 	float len = glm::length(voxels.getLower());
 	len = glm::max(len, glm::length(voxels.getHigher()));
@@ -98,6 +100,7 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	*/
 	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
 
+	
 	object->getShader()->setUniform1i("dimension", voxels.getDimension());
 	object->getShader()->setUniform1f("voxel_size", voxels.getVoxelSize());
 	object->getShader()->setUniform3f("lower", voxels.getLower());

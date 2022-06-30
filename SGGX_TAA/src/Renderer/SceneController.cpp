@@ -153,6 +153,57 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
             && idx_vec.z >= 0 && idx_vec.z < dimension) {
             m_voxels->setVoxel(idx_vec, { 1, normal.x, normal.y, normal.z });
         }
+        /*
+        idx_vec = glm::u16vec3(glm::floor((v1 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, n1.x, n1.y, n1.z });
+        }
+
+        idx_vec = glm::u16vec3(glm::floor((v2 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, n2.x, n2.y, n2.z });
+        }
+
+        idx_vec = glm::u16vec3(glm::floor((v3 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, n3.x, n3.y, n3.z });
+        }
+
+        glm::vec3 center12 = (v1 + v2) / glm::vec3(2);
+        glm::vec3 center13 = (v1 + v3) / glm::vec3(2);
+        glm::vec3 center23 = (v2 + v3) / glm::vec3(2);
+
+        glm::vec3 normal12 = (n1 + n2) / glm::vec3(2);
+        glm::vec3 normal13 = (n1 + n3) / glm::vec3(2);
+        glm::vec3 normal23 = (n1 + n3) / glm::vec3(2);
+
+        idx_vec = glm::u16vec3(glm::floor((center12 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, normal12.x, normal12.y, normal12.z });
+        }
+
+        idx_vec = glm::u16vec3(glm::floor((center13 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, normal13.x, normal13.y, normal13.z });
+        }
+
+        idx_vec = glm::u16vec3(glm::floor((center23 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, normal23.x, normal23.y, normal23.z });
+        }
+        */
     }
 
 
