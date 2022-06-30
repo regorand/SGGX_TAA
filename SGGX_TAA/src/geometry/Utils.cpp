@@ -12,14 +12,30 @@ void make_flat_shaded(std::vector<float>& vertices,
 
 	std::map<unsigned int, std::vector<unsigned int>> tex_map;
 	int max_index = 0;
+	target.lower = glm::vec3(INFINITY);
+	target.higher = glm::vec3(-INFINITY);
 
+	std::cout << "Handling indices in flat_shaded" << std::endl;
 	for (size_t i = 0; i < indices.size(); i++) {
 
 		max_index = glm::max(indices[i].vertex_index, max_index);
 
-		target.vertices.push_back(vertices[3 * indices[i].vertex_index]);
-		target.vertices.push_back(vertices[3 * indices[i].vertex_index + 1]);
-		target.vertices.push_back(vertices[3 * indices[i].vertex_index + 2]);
+		float x_val = vertices[3 * indices[i].vertex_index];
+		float y_val = vertices[3 * indices[i].vertex_index + 1];
+		float z_val = vertices[3 * indices[i].vertex_index + 2];
+		target.vertices.push_back(x_val);
+		target.vertices.push_back(y_val);
+		target.vertices.push_back(z_val);
+		
+		target.lower.x = glm::min(target.lower.x, x_val);
+		target.higher.x = glm::max(target.higher.x, x_val);
+		
+		target.lower.y = glm::min(target.lower.y, y_val);
+		target.higher.y = glm::max(target.higher.y, y_val);
+		
+		target.lower.z = glm::min(target.lower.z, z_val);
+		target.higher.z = glm::max(target.higher.z, z_val);
+
 		target.normals.push_back(normals[3 * indices[i].normal_index]);
 		target.normals.push_back(normals[3 * indices[i].normal_index + 1]);
 		target.normals.push_back(normals[3 * indices[i].normal_index + 2]);
@@ -37,21 +53,26 @@ void make_flat_shaded(std::vector<float>& vertices,
 		target.indices.push_back(i);
 	}
 
-	std::cout << "Vertex tex_coords" << "\n" << std::endl;
+	//std::cout << "Handling Vertex tex_coords" << "\n" << std::endl;
+	/*
 	for (int i = 0; i < max_index; i++) {
 		int size = tex_map[i].size();
-		std::cout << "Size: " << size << "\t";
+		/*
+		//std::cout << "Size: " << size << "\t";
 		for (int j = 0; j < size; j++) {
 			std::cout << " " << tex_map[i][j] << ",";
 		}
 		std::cout << std::endl;
+		
 		if (size > 10) {
+
 			std::cout << "X: " << vertices[3 * i] << std::endl;
 			std::cout << "Y: " << vertices[3 * i + 1] << std::endl;
 			std::cout << "Z: " << vertices[3 * i + 2] << std::endl;
 		}
 
 	}
+	*/
 }
 
 void make_smooth_shaded(std::vector<float>& vertices,
@@ -132,6 +153,7 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 
 	std::string obj_path = model_path + model_name;
 
+	std::cout << "tinyobj call" << std::endl;
 	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_path.c_str(), model_path.c_str());
 
 	if (!ret) {

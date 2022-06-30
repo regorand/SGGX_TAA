@@ -19,6 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\gl_wrappers\ShaderStorageBuffer.cpp" />
+    <ClCompile Include="src\geometry\SGGX_Distribution.cpp" />
+    <ClCompile Include="src\geometry\OBJ_SGGX_Converter.cpp" />
     <ClCompile Include="src\Renderer\RayMarchObject.cpp" />
     <ClCompile Include="src\Renderer\Light.cpp" />
     <ClCompile Include="src\3rd_party\std_image\std_image.cpp" />
@@ -36,10 +39,15 @@
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\gl_wrappers\ArrayBuffer.cpp" />
     <ClCompile Include="src\gl_wrappers\VertexArray.cpp" />
-    <ClCompile Include="src\Utils.cpp" />
+    <ClCompile Include="src\geometry\Utils.cpp" />
     <ClCompile Include="src\gl_wrappers\Texture.cpp" />
+    <ClCompile Include="src\geometry\VoxelGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\gl_wrappers\ShaderStorageBuffer.h" />
+    <ClInclude Include="src\geometry\mesh_object.h" />
+    <ClInclude Include="src\geometry\SGGX_Distribution.h" />
+    <ClInclude Include="src\geometry\OBJ_SGGX_Converter.h" />
     <ClInclude Include="src\Renderer\RayMarchObject.h" />
     <ClInclude Include="src\Renderer\Light.h" />
     <ClInclude Include="src\3rd_party\std_image\std_image.h" />
@@ -62,9 +70,10 @@
     <ClInclude Include="src\3rd_party\imgui\stb_truetype.h" />
     <ClInclude Include="src\file_utils.h" />
     <ClInclude Include="src\gl_wrappers\ArrayBuffer.h" />
-    <ClInclude Include="src\Utils.h" />
+    <ClInclude Include="src\geometry\Utils.h" />
     <ClInclude Include="src\gl_wrappers\VertexArray.h" />
     <ClInclude Include="src\gl_wrappers\Texture.h" />
+    <ClInclude Include="src\geometry\VoxelGrid.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

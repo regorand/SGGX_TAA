@@ -8,7 +8,7 @@ typedef struct params_s {
 	int windowWidth = 1600;
 	int windowHeight = 900;
 
-	float camera_dist = 10.0;
+	float camera_dist = 4.0;
 	float rotation[3] = { 0, 0, 0 };
 	float light_direction[2] = { 0, 0 };
 	bool printUniformNotFound = false;

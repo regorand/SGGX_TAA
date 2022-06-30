@@ -12,6 +12,7 @@
 #include "Camera.h"
 #include "Light.h"
 #include "RayMarchObject.h"
+#include "../geometry/VoxelGrid.h"
 
 class Renderer
 {
@@ -22,6 +23,7 @@ public:
 
 	void render(SceneObject* object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights);
 	void renderRayMarching(RayMarchObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights);
+	void renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels);
 
 	void setProjection(glm::mat4 projectionMatrix);
 	void setViewMatrix(glm::mat4 viewMatrix);

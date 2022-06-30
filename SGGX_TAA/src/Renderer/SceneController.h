@@ -2,13 +2,14 @@
 
 #include <glm/glm.hpp>
 
-#include "../Utils.h"
+#include "../geometry/Utils.h"
 #include "SceneObject.h"
 #include "Renderer.h"
 #include "Camera.h"
 #include "../gl_wrappers/Texture.h"
 #include "Light.h"
 #include "RayMarchObject.h"
+#include "../geometry/VoxelGrid.h"
 
 class SceneController
 {
@@ -17,6 +18,7 @@ private:
 	std::vector<std::shared_ptr<Light>> sceneLights;
 
 	std::shared_ptr<RayMarchObject> rayObj;
+	std::shared_ptr<VoxelGrid> m_voxels;
 
 	Renderer renderer;
 	Camera camera;
@@ -31,6 +33,8 @@ public:
 	
 	bool init();
 	void doFrame();
+
+	bool initVoxels(Mesh_Object_t obj);
 
 	void updateCamera();
 	std::shared_ptr<RayMarchObject> setupRayMarchingQuad();

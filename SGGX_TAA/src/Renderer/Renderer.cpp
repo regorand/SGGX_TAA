@@ -1,4 +1,4 @@
-#include "Renderer.h"
+﻿#include "Renderer.h"
 
 
 Renderer::Renderer()
@@ -72,6 +72,37 @@ void Renderer::renderRayMarching(RayMarchObject* object, Camera& camera, std::ve
 	object->getShader()->setUniform1f("AABBOutlineFactor", parameters.showAABBOutline);
 	object->getShader()->setUniform1i("max_steps", parameters.rayMarchMaxSteps);
 	
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	object->getVertexArray()->unbind();
+	object->getArrayBuffer()->unbind();
+	object->getShader()->unbind();
+}
+
+void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels)
+{
+	object->getVertexArray()->bind();
+	object->getArrayBuffer()->bind();
+	object->getShader()->bind();
+	/*
+	float len = glm::length(voxels.getLower());
+	len = glm::max(len, glm::length(voxels.getHigher()));
+	parameters.camera_dist = len * 10;
+	camera.update();
+	*/
+	glm::mat4 transformation_matrix = camera.getViewMatrix();
+
+	/*
+	object->getShader()->setUniformMat4f("projection_matrix", projectionMatrix);
+	object->getShader()->setUniformMat4f("transformation_matrix", projectionMatrix);
+	*/
+	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
+
+	object->getShader()->setUniform1i("dimension", voxels.getDimension());
+	object->getShader()->setUniform1f("voxel_size", voxels.getVoxelSize());
+	object->getShader()->setUniform3f("lower", voxels.getLower());
+	object->getShader()->setUniform3f("higher", voxels.getHigher());
+
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	object->getVertexArray()->unbind();

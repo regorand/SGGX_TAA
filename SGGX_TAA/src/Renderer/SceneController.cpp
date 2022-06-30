@@ -5,7 +5,7 @@
 #include "../Parameters.h"
 
 SceneController::SceneController()
-    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1)))
+    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(new VoxelGrid(100))
 {}
 
 SceneController::~SceneController()
@@ -26,16 +26,22 @@ bool SceneController::init()
     const std::string GGX_frag_path = "res/shaders/GGX.frag";
 
     std::string model_dir_flat = "res/models/esel_flat/";
+    std::string model_dir_tree = "res/models/chestnut/";
+
     //std::string model_dir_flat = "res/models/smooth/";
     std::string model_dir_sphere = "res/models/sphere/";
     std::string model_name_flat = "esel_flat.obj";
+    std::string model_name_tree = "AL05a.obj";
+
     //std::string model_name_smooth = "esel_smooth.obj";
     std::string model_name_sphere = "sphere.obj";
 
     Mesh_Object_t mesh_left;
     Mesh_Object_t mesh_right;
 
-    bool res =  loadObjMesh(model_dir_sphere, model_name_sphere, mesh_left, ShadingType::SMOOTH);
+    //bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
+    bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
+
     bool res2 = loadObjMesh(model_dir_sphere, model_name_sphere, mesh_right, ShadingType::SMOOTH);
 
     if (!res2 || !res) {
@@ -66,6 +72,9 @@ bool SceneController::init()
     
     glm::mat4 projection_matrix = glm::perspective(parameters.fov, ((float) parameters.windowWidth) / parameters.windowHeight, 0.01f, 1000.0f);
     renderer.setProjection(projection_matrix);
+
+    initVoxels(mesh_left);
+
     return true;
 }
 
@@ -79,7 +88,9 @@ void SceneController::doFrame()
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
         glEnableVertexAttribArray(0);
         */
-        renderer.renderRayMarching(rayObj.get(), camera, sceneLights);
+        //renderer.renderRayMarching(rayObj.get(), camera, sceneLights);
+        VoxelGrid *vg = m_voxels.get();
+        renderer.renderVoxels(rayObj.get(), camera, *vg);
     }
     else {
         glm::mat4 rot = glm::eulerAngleXYZ(parameters.rotation[0], parameters.rotation[1], parameters.rotation[2]);
@@ -94,10 +105,111 @@ void SceneController::doFrame()
     }
 }
 
+bool SceneController::initVoxels(Mesh_Object_t obj)
+{
+    std::cout << "Initializing Voxels" << std::endl;
+    m_voxels->setLower(obj.lower);
+    m_voxels->setHigher(obj.higher);
+    float voxelSize = m_voxels->getVoxelSize();
+    auto dimension = m_voxels->getDimension();
+    /*
+    for (uint16_t x = 0; x < dimension; x++) {
+        for (uint16_t y = 0; y < dimension; y++) {
+            for (uint16_t z = 0; z < dimension; z++) {
+                glm::u16vec3 idx_vec = glm::u16vec3(x, y, z);
+                uint16_t dist = glm::floor(glm::length(glm::vec3(idx_vec) - glm::vec3(dimension / 2)));
+                float len = glm::sqrt(idx_vec.x* idx_vec.x + idx_vec.y * idx_vec.y + idx_vec.z * idx_vec.z);
+
+                float lower = 5;
+                if (dist > lower && dist <= lower + 1) {
+                    m_voxels->setVoxel(idx_vec, { 1 });
+                }
+                else {
+                    m_voxels->setVoxel(idx_vec, { 0 });
+                }
+            }
+        }
+    }
+    */
+    unsigned int count = 0;
+    for (uint32_t idx = 0; idx < obj.indices.size(); idx += 3) {
+        if (idx % 3000 == 0) {
+            std::cout << "voxelizing triangle #" << idx / 3 << std::endl;
+        }
+        glm::vec3 v1 = glm::vec3(obj.vertices[3 * obj.indices[idx]],     obj.vertices[3 * obj.indices[idx] + 1],     obj.vertices[3 * obj.indices[idx] + 2]);
+        glm::vec3 v2 = glm::vec3(obj.vertices[3 * obj.indices[idx + 1]], obj.vertices[3 * obj.indices[idx + 1] + 1], obj.vertices[3 * obj.indices[idx + 1] + 2]);
+        glm::vec3 v3 = glm::vec3(obj.vertices[3 * obj.indices[idx + 2]], obj.vertices[3 * obj.indices[idx + 2] + 1], obj.vertices[3 * obj.indices[idx + 2] + 2]);
+
+        glm::vec3 n1 = glm::vec3(obj.normals[3 * obj.indices[idx]],     obj.normals[3 * obj.indices[idx] + 1],     obj.normals[3 * obj.indices[idx] + 2]);
+        glm::vec3 n2 = glm::vec3(obj.normals[3 * obj.indices[idx + 1]], obj.normals[3 * obj.indices[idx + 1] + 1], obj.normals[3 * obj.indices[idx + 1] + 2]);
+        glm::vec3 n3 = glm::vec3(obj.normals[3 * obj.indices[idx + 2]], obj.normals[3 * obj.indices[idx + 2] + 1], obj.normals[3 * obj.indices[idx + 2] + 2]);
+
+        glm::vec3 center = (v1 + v2 + v3) / glm::vec3(3);
+        glm::vec3 normal = (n1 + n2 + n3) / glm::vec3(3);
+ 
+        glm::u16vec3 idx_vec = glm::u16vec3(glm::floor((center - m_voxels->getLower()) / m_voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            m_voxels->setVoxel(idx_vec, { 1, normal.x, normal.y, normal.z });
+        }
+    }
+
+
+    /*
+    for (uint32_t idx = 0; idx < obj.indices.size(); idx+=3) {
+        //std::cout << "Doing triangle idx: " << idx << "\ttriangle#: " << idx / 3 << std::endl;
+        glm::vec3 v1 = glm::vec3(obj.vertices[obj.indices[idx]], obj.vertices[obj.indices[idx] + 1], obj.vertices[obj.indices[idx] + 2]);
+        glm::vec3 v2 = glm::vec3(obj.vertices[obj.indices[idx + 1]], obj.vertices[obj.indices[idx + 1] + 1], obj.vertices[obj.indices[idx + 1] + 2]);
+        glm::vec3 v3 = glm::vec3(obj.vertices[obj.indices[idx + 2]], obj.vertices[obj.indices[idx + 2] + 1], obj.vertices[obj.indices[idx + 2] + 2]);
+
+        glm::vec3 normal = glm::cross(v2 - v1, v3 - v1);
+        float d = glm::dot(v1, normal);
+
+        for (uint16_t x = 0; x < dimension; x++) {
+            for (uint16_t y = 0; y < dimension; y++) {
+                for (uint16_t z = 0; z < dimension; z++) {
+                    glm::u16vec3 idx_vec = glm::u16vec3(x, y, z);
+                    glm::vec3 center = m_voxels->getCenterOfVoxel(idx_vec);
+                    float dist_to_triangles = 2 * voxelSize;
+                    float dot = glm::dot(normal, glm::vec3(1, 0, 0));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    dot = glm::dot(normal, glm::vec3(0, 1, 0));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    dot = glm::dot(normal, glm::vec3(0, 0, 1));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    if (dist_to_triangles < glm::sqrt(3 * voxelSize * voxelSize)) {
+                        m_voxels->setVoxel(idx_vec, { 1 });
+                    }
+                    else {
+                        m_voxels->setVoxel(idx_vec, { 0 });
+                    }
+                }
+            }
+        }
+    }
+    */
+    m_voxels->initBuffers();
+
+    return true;
+}
+
 void SceneController::updateCamera()
 {
-    
-    camera.setPosition(glm::vec3(parameters.camera_dist * glm::sin(angleY), 0, -parameters.camera_dist * glm::cos(angleY)));
+    float dist = parameters.camera_dist * parameters.camera_dist;
+    camera.setPosition(glm::vec3(dist * glm::sin(angleY), 0, -dist * glm::cos(angleY)));
     camera.setLookAt(glm::vec3(0, 0, 0));
     if (parameters.rotateCamera) {
         angleY += angle_speed_Y;
@@ -170,8 +282,10 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
     std::string rayVertexShader = "res/shaders/ray_marching.vert";
 
     //std::string rayFragmentShader = "res/shaders/ray_marching.frag";
-    std::string rayFragmentShader = "res/shaders/ray_trace_bounding.frag";
+    //std::string rayFragmentShader = "res/shaders/ray_trace_bounding.frag";
     //std::string rayFragmentShader = "res/shaders/sphere_tracing.frag";
+
+    std::string rayFragmentShader = "res/shaders/voxels.frag";
 
     std::shared_ptr<Shader> shader = std::make_shared<Shader>(rayVertexShader, rayFragmentShader);
 
