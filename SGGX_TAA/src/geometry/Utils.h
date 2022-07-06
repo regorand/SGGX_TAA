@@ -1,7 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
+#include <fstream>
 #include <unordered_map>
+#include <filesystem>
+#include <glm/gtc/type_ptr.hpp >
 
 #include "mesh_object.h"
 #include "glm/glm.hpp"
@@ -29,3 +33,6 @@ void make_smooth_shaded(std::vector<float>& vertices,
 	Mesh_Object_t& target);
 
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType);
+
+bool readObjectFromFile(std::string file_name, Mesh_Object_t& target);
+bool saveToFile(std::string file_name, Mesh_Object_t &object);

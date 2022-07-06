@@ -27,11 +27,13 @@ bool SceneController::init()
 
     std::string model_dir_flat = "res/models/esel_flat/";
     std::string model_dir_tree = "res/models/chestnut/";
+    std::string model_dir_tree2 = "res/models/tree/";
 
     //std::string model_dir_flat = "res/models/smooth/";
     std::string model_dir_sphere = "res/models/sphere/";
     std::string model_name_flat = "esel_flat.obj";
     std::string model_name_tree = "AL05a.obj";
+    std::string model_name_tree2 = "Tree.obj";
 
     //std::string model_name_smooth = "esel_smooth.obj";
     std::string model_name_sphere = "sphere.obj";
@@ -39,8 +41,9 @@ bool SceneController::init()
     Mesh_Object_t mesh_left;
     Mesh_Object_t mesh_right;
 
-    bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
-    //bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
+    //bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
+    bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
+    //bool res = loadObjMesh(model_dir_tree2, model_name_tree2, mesh_left, ShadingType::FLAT);
 
     bool res2 = loadObjMesh(model_dir_sphere, model_name_sphere, mesh_right, ShadingType::SMOOTH);
 
@@ -151,7 +154,11 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
         if (idx_vec.x >= 0 && idx_vec.x < dimension
             && idx_vec.y >= 0 && idx_vec.y < dimension
             && idx_vec.z >= 0 && idx_vec.z < dimension) {
-            m_voxels->setVoxel(idx_vec, { 1, normal.x, normal.y, normal.z });
+            auto voxel = m_voxels->getVoxel(idx_vec);
+            float density = glm::min(0.03f + voxel.val, 1.0f);
+            glm::vec3 n = normal + glm::vec3(voxel.normal_x, voxel.normal_y, voxel.normal_z);
+
+            m_voxels->setVoxel(idx_vec, { density, normal.x, normal.y, normal.z });
         }
         /*
         idx_vec = glm::u16vec3(glm::floor((v1 - m_voxels->getLower()) / m_voxels->getVoxelSize()));
@@ -254,6 +261,13 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
     */
     m_voxels->initBuffers();
 
+    unsigned int voxels = m_voxels->countVoxels();
+    unsigned int non_empty_voxels = m_voxels->countNonEmptyVoxels();
+    std::cout << "Voxel count: " << voxels << "\n";
+    std::cout << "Non empty Voxel count: " << non_empty_voxels << "\n";
+    std::cout << "Abs difference: " << (voxels - non_empty_voxels) << "\n";
+    std::cout << "Voxelgrid density: " << ((float )non_empty_voxels) / voxels << std::endl;
+
     return true;
 }
 
@@ -261,6 +275,8 @@ void SceneController::updateCamera()
 {
     float dist = parameters.camera_dist * parameters.camera_dist;
     camera.setPosition(glm::vec3(dist * glm::sin(angleY), 0, -dist * glm::cos(angleY)));
+    glm::vec3 voxel_center = (m_voxels->getLower() + m_voxels->getHigher()) / glm::vec3(2);
+    //camera.setLookAt(voxel_center);
     camera.setLookAt(glm::vec3(0, 0, 0));
     if (parameters.rotateCamera) {
         angleY += angle_speed_Y;

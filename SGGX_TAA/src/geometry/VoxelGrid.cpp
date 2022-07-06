@@ -93,6 +93,23 @@ void VoxelGrid::initBuffers()
 	m_isInit = true;
 }
 
+unsigned int VoxelGrid::countVoxels()
+{
+	return glm::pow((uint32_t)m_dimension, 3);
+}
+
+unsigned int VoxelGrid::countNonEmptyVoxels()
+{
+	float eps = 1e-7;
+	unsigned int count = 0;
+	for (uint32_t i = 0; i < glm::pow((uint32_t)m_dimension, 3); i++) {
+		if (m_data[i].val > eps) {
+			count++;
+		}
+	}
+	return count;
+}
+
 bool VoxelGrid::checkDimension(glm::u16vec3 indices)
 {
 	return indices.x >= 0 && indices.x < m_dimension
