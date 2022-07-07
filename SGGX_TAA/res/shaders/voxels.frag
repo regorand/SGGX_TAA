@@ -174,10 +174,10 @@ void main() {
             if (output_type == 0) {
                 out_color += dist_factor * density_factor * density * vec4(1);
             } else if (output_type == 1) {
-                out_color += dist_factor * density_factor * density *  vec4(vec3(dot(voxel_surface_normal, up)), 1);
+                out_color += dist_factor * density_factor * density *  vec4(vec3(dot(normal, up)), 1);
             } else if (output_type == 2) {
                 out_color += 0.3 * vec4(1);
-                out_color += 0.7 * vec4(vec3(max(dot(voxel_surface_normal, up), 0)), 1);
+                out_color += 0.7 * vec4(vec3(max(dot(normal, up), 0)), 1);
                 break;
             } else if (output_type == 3) {
                 out_color = vec4(voxel_surface_normal, 1);
