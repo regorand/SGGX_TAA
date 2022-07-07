@@ -2,8 +2,8 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
-static const char* shader_output_items[]{ "white", "shaded", "normal", "abs_normal", "position", "custom" };
-static unsigned int shader_output_count = 6;
+static const char* shader_output_items[]{ "white", "shaded", "shaded solid", "normal", "abs_normal", "position", "custom" };
+static unsigned int shader_output_count = 7;
 
 typedef struct params_s {
 	float fov = glm::pi<float>() / 3;
@@ -14,6 +14,10 @@ typedef struct params_s {
 	int current_shader_output = 1;
 
 	float camera_dist = 4.0;
+	float camera_height = 0;
+	float camera_rotation[2] = { 0, 0 };
+
+
 	float rotation[3] = { 0, 0, 0 };
 	float light_direction[2] = { 0, 0 };
 	bool printUniformNotFound = false;

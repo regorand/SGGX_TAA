@@ -38,10 +38,12 @@ void Renderer::render(SceneObject *object, Camera &camera, std::vector<std::shar
 	object->getShader()->setUniform3fv("light_positions", lights.size(), lights_pos.data());
 	object->getShader()->setUniform3fv("lights_intensities", lights.size(), lights_intensities.data());
 
-	object->getShader()->setUniform3f("K_A", materials[0].m_KA);
-	object->getShader()->setUniform3f("K_D", materials[0].m_KD);
-	object->getShader()->setUniform3f("K_S", materials[0].m_KS);
-	object->getShader()->setUniform1f("spec_exponent", materials[0].m_SpecularCoeff);
+	if (materials.size() > 0) {
+		object->getShader()->setUniform3f("K_A", materials[0].m_KA);
+		object->getShader()->setUniform3f("K_D", materials[0].m_KD);
+		object->getShader()->setUniform3f("K_S", materials[0].m_KS);
+		object->getShader()->setUniform1f("spec_exponent", materials[0].m_SpecularCoeff);
+	}
 
 	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
 
@@ -92,6 +94,8 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	parameters.camera_dist = len * 10;
 	camera.update();
 	*/
+
+	camera.setPosition(camera.getPosition() + glm::vec3(0, parameters.camera_height, 0));
 	glm::mat4 transformation_matrix = camera.getViewMatrix();
 
 	/*

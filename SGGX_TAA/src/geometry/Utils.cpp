@@ -144,6 +144,16 @@ void make_smooth_shaded(std::vector<float>& vertices,
 }
 
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType) {
+	std::string path = model_path + model_name + ".dat";
+	if (std::filesystem::exists(path)) {
+		std::cout << "Found dat file, trying to load that" << std::endl;
+		bool res = readObjectFromFile(model_path + model_name, target);
+		if (res) {
+			return true;
+		}
+		std::cout << "Loading from .dat file failed, loading from .obj file" << std::endl;
+	}
+
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -167,8 +177,11 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 
 	tinyobj::shape_t shape = shapes[0];
 
+	Mesh_Object_t other;
+
 	if (shadingType == ShadingType::FLAT) {
-		make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
+		//make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
+		make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, other);
 	}
 	else if (shadingType == ShadingType::SMOOTH) {
 		make_smooth_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
@@ -187,5 +200,115 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 		target.materials.push_back(material);
 	}
 
+	std::cout << "Trying to save model in .dat file" << std::endl;
+	bool res = saveToFile(model_path + model_name, other);
+	if (!res) {
+		std::cout << "Failed to save model in .dat file" << std::endl;
+	}
+
 	return true;
 }
+
+bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
+{
+	std::string path = file_name + ".dat";
+	if (!std::filesystem::exists(path)) {
+		std::cout << "File to load doesn't exist: " << file_name << std::endl;
+		return false;
+	}
+
+	std::ifstream fin(path, std::ios::in | std::ios::binary);
+
+	size_t vertices_size = 0;
+	fin.read((char*)&vertices_size, sizeof(size_t));
+
+	size_t tex_coords_size = 0;
+	fin.read((char*)&tex_coords_size, sizeof(size_t));
+
+	size_t normals_size = 0;
+	fin.read((char*)&normals_size, sizeof(size_t));
+
+	size_t colors_size = 0;
+	fin.read((char*)&colors_size, sizeof(size_t));
+
+	size_t indices_size = 0;
+	fin.read((char*)&indices_size, sizeof(size_t));
+
+	fin.read((char*)glm::value_ptr(target.lower), sizeof(float) * 3);
+	fin.read((char*)glm::value_ptr(target.higher), sizeof(float) * 3);
+
+	fin.read((char*)&target.shadingType, sizeof(target.shadingType));
+
+	float* vertices_buffer = new float[vertices_size];
+	fin.read((char*) vertices_buffer, vertices_size * sizeof(float));
+	std::vector<float> vertices(vertices_buffer, vertices_buffer + vertices_size);
+	delete vertices_buffer;
+
+	float* tex_coords_buffer = new float[tex_coords_size];
+	fin.read((char*)tex_coords_buffer, tex_coords_size * sizeof(float));
+	std::vector<float> tex_coords(tex_coords_buffer, tex_coords_buffer + tex_coords_size);
+	delete tex_coords_buffer;
+
+	float* normals_buffer = new float[normals_size];
+	fin.read((char*)normals_buffer, normals_size * sizeof(float));
+	std::vector<float> normals(normals_buffer, normals_buffer + normals_size);
+	delete normals_buffer;
+
+	float* colors_buffer = new float[colors_size];
+	fin.read((char*)colors_buffer, colors_size * sizeof(float));
+	std::vector<float> colors(colors_buffer, colors_buffer + colors_size);
+	delete colors_buffer;
+
+	unsigned int* indices_buffer = new unsigned int[indices_size];
+	fin.read((char*)indices_buffer, indices_size * sizeof(unsigned int));
+	std::vector<unsigned int> indices(indices_buffer, indices_buffer + indices_size);
+	delete indices_buffer;
+
+	target.vertices = vertices;
+	target.tex_coords = tex_coords;
+	target.normals = normals;
+	target.colors = colors;
+	target.indices = indices;
+
+	return true;
+}
+
+bool saveToFile(std::string file_name, Mesh_Object_t& object)
+{
+	std::string path = file_name + ".dat";
+	if (std::filesystem::exists(path)) {
+		return false;
+	}
+
+	std::ofstream fout(path, std::ios::out | std::ios::binary);
+
+	size_t vertices_size = object.vertices.size();
+	fout.write((char*) &vertices_size, sizeof(size_t));
+
+	size_t tex_coords_size = object.tex_coords.size();
+	fout.write((char*) &tex_coords_size, sizeof(size_t));
+
+	size_t normals_size = object.normals.size();
+	fout.write((char*) &normals_size, sizeof(size_t));
+
+	size_t colors_size = object.colors.size();
+	fout.write((char*) &colors_size, sizeof(size_t));
+
+	size_t indices_size = object.indices.size();
+	fout.write((char*) &indices_size, sizeof(size_t));
+
+	fout.write((char*)glm::value_ptr(object.lower), sizeof(float) * 3);
+	fout.write((char*)glm::value_ptr(object.higher), sizeof(float) * 3);
+
+	fout.write((char*) &object.shadingType, sizeof(object.shadingType));
+
+	fout.write((char*) object.vertices.data(), vertices_size * sizeof(float));
+	fout.write((char*) object.tex_coords.data(), tex_coords_size * sizeof(float));
+	fout.write((char*) object.normals.data(), normals_size * sizeof(float));
+	fout.write((char*) object.colors.data(), colors_size * sizeof(float));
+	fout.write((char*) object.indices.data(), indices_size * sizeof(unsigned int));
+	fout.close();
+
+	return false;
+}
+

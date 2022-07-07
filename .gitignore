@@ -31,3 +31,6 @@ lib/
 
 *.swp
 *.zip
+
+*.dat
+*.rar

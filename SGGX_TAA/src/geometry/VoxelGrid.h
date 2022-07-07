@@ -12,6 +12,7 @@ typedef struct {
 	float normal_x;
 	float normal_y;
 	float normal_z;
+	
 } voxel_t;
 
 class VoxelGrid
@@ -49,6 +50,9 @@ public:
 	bool isInit();
 
 	void initBuffers();
+
+	unsigned int countVoxels();
+	unsigned int countNonEmptyVoxels();
 private:
 	bool checkDimension(glm::u16vec3 indices);
 };
