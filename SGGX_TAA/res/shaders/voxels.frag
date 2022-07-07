@@ -174,7 +174,7 @@ void main() {
             if (output_type == 0) {
                 out_color += dist_factor * density_factor * density * vec4(1);
             } else if (output_type == 1) {
-                out_color += dist_factor * density_factor * density *  vec4(vec3(dot(voxel_surface_normal, up)), 1);
+                out_color += dist_factor * density_factor * density *  vec4(vec3(dot(normal, up)), 1);
             } else if (output_type == 2) {
                 out_color += 0.3 * vec4(vec3(abs(dot(voxel_surface_normal, -ray_dir))), 1);
                 //out_color += 0.3 * vec4(1);

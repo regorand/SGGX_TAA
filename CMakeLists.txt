@@ -11,7 +11,7 @@ endforeach()
 
 include_directories(${CMAKE_SOURCE_DIR}/Dependencies/glew-2.1.0/include/)
 include_directories(${CMAKE_SOURCE_DIR}/Dependencies/glfw-3.3.7/include/)
-include_directories(Dependencies/glm-0.9.9.8/include/)
+include_directories(Dependencies/glm-0.9.9.8/)
 
 add_subdirectory(SGGX_TAA)
 
@@ -121,7 +121,7 @@ link_directories(${CMAKE_SOURCE_DIR}/Dependencies/glfw-3.3.7/src/)
 add_subdirectory(${CMAKE_SOURCE_DIR}/Dependencies/glm-0.9.9.8)
 target_link_libraries(${PROJECT_NAME} glm)
 
-link_directories(${CMAKE_SOURCE_DIR}/Dependencies/glm-0.9.9.8/src/)
+link_directories(${CMAKE_SOURCE_DIR}/Dependencies/glm-0.9.9.8/)
 
 
 
