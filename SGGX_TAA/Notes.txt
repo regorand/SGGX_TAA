@@ -1,0 +1,13 @@
+Imgui
+
+-> Menu for shader output
+
+Tesselate Mesh to max size
+
+Bonus Task: Computer Shader for Voxelization
+
+1 Page
+
+Bugs:
+
+When displaying position in voxels it doesnt use world space position
