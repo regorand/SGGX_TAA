@@ -28,6 +28,7 @@
     <ClCompile Include="src\Renderer\Material.cpp" />
     <ClCompile Include="src\Renderer\Camera.cpp" />
     <ClCompile Include="src\Parameters.cpp" />
+    <ClCompile Include="src\Types.cpp" />
     <ClCompile Include="src\Renderer\SceneController.cpp" />
     <ClCompile Include="src\Renderer\SceneObject.cpp" />
     <ClCompile Include="src\Renderer\Renderer.cpp" />
@@ -44,6 +45,8 @@
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\ImGuiUtils.h" />
+    <ClInclude Include="src\Types.h" />
     <ClInclude Include="src\gl_wrappers\ShaderStorageBuffer.h" />
     <ClInclude Include="src\geometry\mesh_object.h" />
     <ClInclude Include="src\geometry\SGGX_Distribution.h" />

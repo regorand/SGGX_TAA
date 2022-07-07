@@ -149,6 +149,7 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 		std::cout << "Found dat file, trying to load that" << std::endl;
 		bool res = readObjectFromFile(model_path + model_name, target);
 		if (res) {
+			std::cout << "Successfully loaded from .dat file" << std::endl;
 			return true;
 		}
 		std::cout << "Loading from .dat file failed, loading from .obj file" << std::endl;
@@ -177,11 +178,9 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 
 	tinyobj::shape_t shape = shapes[0];
 
-	Mesh_Object_t other;
-
 	if (shadingType == ShadingType::FLAT) {
 		//make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
-		make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, other);
+		make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
 	}
 	else if (shadingType == ShadingType::SMOOTH) {
 		make_smooth_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
@@ -201,7 +200,7 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 	}
 
 	std::cout << "Trying to save model in .dat file" << std::endl;
-	bool res = saveToFile(model_path + model_name, other);
+	bool res = saveToFile(model_path + model_name, target);
 	if (!res) {
 		std::cout << "Failed to save model in .dat file" << std::endl;
 	}
@@ -209,6 +208,7 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 	return true;
 }
 
+// If this functions is changed, always change file version 
 bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 {
 	std::string path = file_name + ".dat";
@@ -218,6 +218,13 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 	}
 
 	std::ifstream fin(path, std::ios::in | std::ios::binary);
+
+	uint32_t version = 0;
+	fin.read((char*)&version, sizeof(version));
+	if (version != OBJ_FILE_FORMAT_VERSION) {
+		std::cout << "Error: Found .dat file, but it is an older version" << std::endl;
+		return false;
+	}
 
 	size_t vertices_size = 0;
 	fin.read((char*)&vertices_size, sizeof(size_t));
@@ -234,41 +241,67 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 	size_t indices_size = 0;
 	fin.read((char*)&indices_size, sizeof(size_t));
 
+	size_t materials_size = 0;
+	fin.read((char*)&materials_size, sizeof(size_t));
+
 	fin.read((char*)glm::value_ptr(target.lower), sizeof(float) * 3);
 	fin.read((char*)glm::value_ptr(target.higher), sizeof(float) * 3);
 
 	fin.read((char*)&target.shadingType, sizeof(target.shadingType));
 
-	float* vertices_buffer = new float[vertices_size];
-	fin.read((char*) vertices_buffer, vertices_size * sizeof(float));
-	std::vector<float> vertices(vertices_buffer, vertices_buffer + vertices_size);
-	delete vertices_buffer;
+	if (vertices_size > 0) {
+		float* vertices_buffer = new float[vertices_size];
+		fin.read((char*)vertices_buffer, vertices_size * sizeof(float));
+		std::vector<float> vertices(vertices_buffer, vertices_buffer + vertices_size);
+		delete vertices_buffer;
+		target.vertices = vertices;
+	}
 
-	float* tex_coords_buffer = new float[tex_coords_size];
-	fin.read((char*)tex_coords_buffer, tex_coords_size * sizeof(float));
-	std::vector<float> tex_coords(tex_coords_buffer, tex_coords_buffer + tex_coords_size);
-	delete tex_coords_buffer;
+	if (tex_coords_size > 0) {
+		float* tex_coords_buffer = new float[tex_coords_size];
+		fin.read((char*)tex_coords_buffer, tex_coords_size * sizeof(float));
+		std::vector<float> tex_coords(tex_coords_buffer, tex_coords_buffer + tex_coords_size);
+		delete tex_coords_buffer;
+		target.tex_coords = tex_coords;
+	}
 
-	float* normals_buffer = new float[normals_size];
-	fin.read((char*)normals_buffer, normals_size * sizeof(float));
-	std::vector<float> normals(normals_buffer, normals_buffer + normals_size);
-	delete normals_buffer;
+	if (normals_size > 0) {
+		float* normals_buffer = new float[normals_size];
+		fin.read((char*)normals_buffer, normals_size * sizeof(float));
+		std::vector<float> normals(normals_buffer, normals_buffer + normals_size);
+		delete normals_buffer;
+		target.normals = normals;
+	}
 
-	float* colors_buffer = new float[colors_size];
-	fin.read((char*)colors_buffer, colors_size * sizeof(float));
-	std::vector<float> colors(colors_buffer, colors_buffer + colors_size);
-	delete colors_buffer;
+	if (colors_size > 0) {
+		float* colors_buffer = new float[colors_size];
+		fin.read((char*)colors_buffer, colors_size * sizeof(float));
+		std::vector<float> colors(colors_buffer, colors_buffer + colors_size);
+		delete colors_buffer;
+		target.colors = colors;
+	}
 
-	unsigned int* indices_buffer = new unsigned int[indices_size];
-	fin.read((char*)indices_buffer, indices_size * sizeof(unsigned int));
-	std::vector<unsigned int> indices(indices_buffer, indices_buffer + indices_size);
-	delete indices_buffer;
+	if (indices_size > 0) {
+		unsigned int* indices_buffer = new unsigned int[indices_size];
+		fin.read((char*)indices_buffer, indices_size * sizeof(unsigned int));
+		std::vector<unsigned int> indices(indices_buffer, indices_buffer + indices_size);
+		delete indices_buffer;
+		target.indices = indices;
+	}
 
-	target.vertices = vertices;
-	target.tex_coords = tex_coords;
-	target.normals = normals;
-	target.colors = colors;
-	target.indices = indices;
+	if (materials_size > 0) {
+		serializable_material* materials_buffer = new serializable_material[materials_size];
+		fin.read((char*)materials_buffer, materials_size * sizeof(serializable_material));
+		std::vector<serializable_material> serialized_materials(materials_buffer, materials_buffer + materials_size);
+		delete materials_buffer;
+		target.materials.resize(0);
+		std::transform(serialized_materials.begin(),
+			serialized_materials.end(),
+			std::back_inserter(target.materials),
+			[](serializable_material s) {
+				return Material(s);
+			});
+	}
 
 	return true;
 }
@@ -281,6 +314,8 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	}
 
 	std::ofstream fout(path, std::ios::out | std::ios::binary);
+
+	fout.write((char*)&OBJ_FILE_FORMAT_VERSION, sizeof(OBJ_FILE_FORMAT_VERSION));
 
 	size_t vertices_size = object.vertices.size();
 	fout.write((char*) &vertices_size, sizeof(size_t));
@@ -297,6 +332,9 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	size_t indices_size = object.indices.size();
 	fout.write((char*) &indices_size, sizeof(size_t));
 
+	size_t materials_size = object.materials.size();
+	fout.write((char*)&materials_size, sizeof(size_t));
+
 	fout.write((char*)glm::value_ptr(object.lower), sizeof(float) * 3);
 	fout.write((char*)glm::value_ptr(object.higher), sizeof(float) * 3);
 
@@ -307,8 +345,21 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	fout.write((char*) object.normals.data(), normals_size * sizeof(float));
 	fout.write((char*) object.colors.data(), colors_size * sizeof(float));
 	fout.write((char*) object.indices.data(), indices_size * sizeof(unsigned int));
+
+	std::vector<serializable_material> serializable_mats;
+
+	std::transform(object.materials.begin(),
+		object.materials.end(),
+		std::back_inserter(serializable_mats),
+		[](Material m) { 
+			serializable_material s_mat;
+			m.serialize(s_mat);
+			return s_mat;
+		});
+
+	fout.write((char*)serializable_mats.data(), materials_size * sizeof(serializable_material));
 	fout.close();
 
-	return false;
+	return true;
 }
 

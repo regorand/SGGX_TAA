@@ -4,8 +4,10 @@
 
 #include "../Parameters.h"
 
+#include "../file_utils.h"
+
 SceneController::SceneController()
-    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(new VoxelGrid(100))
+    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(new VoxelGrid(30))
 {}
 
 SceneController::~SceneController()
@@ -45,9 +47,9 @@ bool SceneController::init()
     bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
     //bool res = loadObjMesh(model_dir_tree2, model_name_tree2, mesh_left, ShadingType::FLAT);
 
-    bool res2 = loadObjMesh(model_dir_sphere, model_name_sphere, mesh_right, ShadingType::SMOOTH);
+    //bool res2 = loadObjMesh(model_dir_sphere, model_name_sphere, mesh_right, ShadingType::SMOOTH);
 
-    if (!res2 || !res) {
+    if (/*!res2 || */!res) {
         std::cout << "Import of obj Failed" << std::endl;
         return false;
     }
@@ -60,6 +62,7 @@ bool SceneController::init()
         sceneObjects.push_back(object);
     }
     
+    /*
     std::shared_ptr<Shader> shader_right = std::make_shared<Shader>(vert_path, GGX_frag_path);
 
     if (shader_right->isValid()) {
@@ -69,7 +72,7 @@ bool SceneController::init()
         std::shared_ptr<SceneObject>object_2 = registerSceneObject(mesh_right, shader_right, translation_matrix_right);
         sceneObjects.push_back(object_2);
     }
-
+    */
     //camera = Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1));
     rayObj = setupRayMarchingQuad();
     
@@ -78,13 +81,28 @@ bool SceneController::init()
 
     initVoxels(mesh_left);
 
+    getLoadableObj("res/models/");
+
     return true;
 }
 
 void SceneController::doFrame()
 {
     updateCamera();
-    if (parameters.renderRayMarch && rayObj->getShader()->isValid()) {
+    if (parameters.active_render_type == "Rasterization") 
+    {
+        glm::mat4 rot = glm::eulerAngleXYZ(parameters.rotation[0], parameters.rotation[1], parameters.rotation[2]);
+
+        //camera.update();
+        for (auto& object : sceneObjects) {
+            if (object->getShader()->isValid()) {
+                object->setLocalTransformation(rot);
+                renderer.render(object.get(), camera, sceneLights);
+            }
+        }
+    }
+    else if (parameters.active_render_type == "Voxels")
+    {
         std::vector<glm::vec3> vertices = camera.getScreenCoveringQuad();
         rayObj->getArrayBuffer()->updateData(vertices.data(), vertices.size() * 3 * sizeof(float));
         /*
@@ -92,8 +110,12 @@ void SceneController::doFrame()
         glEnableVertexAttribArray(0);
         */
         //renderer.renderRayMarching(rayObj.get(), camera, sceneLights);
-        VoxelGrid *vg = m_voxels.get();
+        VoxelGrid* vg = m_voxels.get();
         renderer.renderVoxels(rayObj.get(), camera, *vg);
+    }
+    /*
+    if (parameters.renderRayMarch && rayObj->getShader()->isValid()) {
+        
     }
     else {
         glm::mat4 rot = glm::eulerAngleXYZ(parameters.rotation[0], parameters.rotation[1], parameters.rotation[2]);
@@ -106,6 +128,7 @@ void SceneController::doFrame()
             }
         }
     }
+    */
 }
 
 bool SceneController::initVoxels(Mesh_Object_t obj)
@@ -357,4 +380,13 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
     std::shared_ptr<Shader> shader = std::make_shared<Shader>(rayVertexShader, rayFragmentShader);
 
     return std::make_shared<RayMarchObject>(va, verts, shader);
+}
+
+void SceneController::loadAndDisplayObject(std::string object_path)
+{
+    if (!std::filesystem::exists(object_path)) {
+        std::cout << "Error: Can't find objecft file: " << object_path << std::endl;
+    }
+
+
 }

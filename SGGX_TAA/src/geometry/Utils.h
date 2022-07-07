@@ -16,7 +16,7 @@
 
 #include "../3rd_party/std_image/std_image.h"
 
-
+const uint32_t OBJ_FILE_FORMAT_VERSION = 2;
 
 void make_flat_shaded(std::vector<float>& vertices,
 	std::vector<float>& normals,

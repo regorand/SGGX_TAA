@@ -23,9 +23,11 @@ void Renderer::render(SceneObject *object, Camera &camera, std::vector<std::shar
 		object->getShader()->setUniform1i("diff_texture", 0);
 	}
 
-	glm::vec3 lightDirection = glm::vec3(glm::cos(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]), 
-		glm::sin(parameters.light_direction[1]), 
-		glm::sin(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]));
+	//glm::vec3 lightDirection = glm::vec3(glm::cos(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]), 
+	//	glm::sin(parameters.light_direction[1]), 
+	//	glm::sin(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]));
+
+	glm::vec3 lightDirection = glm::vec3(1, 0, 0);
 	object->getShader()->setUniform3f("light_direction", lightDirection);
 	
 	std::vector<glm::vec3> lights_pos;
@@ -87,7 +89,7 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	object->getArrayBuffer()->bind();
 	object->getShader()->bind();
 
-	object->getShader()->setUniform1i("output_type", parameters.current_shader_output);
+	object->getShader()->setUniform1i("output_type", parameters.active_shader_output_index);
 	/*
 	float len = glm::length(voxels.getLower());
 	len = glm::max(len, glm::length(voxels.getHigher()));

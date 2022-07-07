@@ -39,8 +39,9 @@ public:
 	void updateCamera();
 	std::shared_ptr<RayMarchObject> setupRayMarchingQuad();
 
+	void loadAndDisplayObject(std::string object_path);
+
 	void reloadShaders();
 };
 
-std::shared_ptr<SceneObject> registerSceneObject(Mesh_Object_t &source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix);
-std::shared_ptr<RayMarchObject> setupRayMarchingQuad();
+std::shared_ptr<SceneObject> registerSceneObject(Mesh_Object_t &source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix)
