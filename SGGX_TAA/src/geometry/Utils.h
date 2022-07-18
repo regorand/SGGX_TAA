@@ -34,6 +34,7 @@ void make_smooth_shaded(std::vector<float>& vertices,
 	Mesh_Object_t& target);
 
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType);
+bool loadObjMesh(std::string& full_model_path, Mesh_Object_t& target, const ShadingType shadingType);
 
 bool readObjectFromFile(std::string file_name, Mesh_Object_t& target);
 bool saveToFile(std::string file_name, Mesh_Object_t &object);

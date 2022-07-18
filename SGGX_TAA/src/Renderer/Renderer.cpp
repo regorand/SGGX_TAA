@@ -6,7 +6,7 @@ Renderer::Renderer()
 	projectionMatrix = glm::mat4(1);
 }
 
-void Renderer::render(SceneObject *object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights)
+void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights)
 {
 	glm::mat4 MVP = projectionMatrix * camera.getViewMatrix() * object->getLocalTransform();
 
@@ -15,6 +15,8 @@ void Renderer::render(SceneObject *object, Camera &camera, std::vector<std::shar
 	object->getShader()->bind();
 	object->getShader()->setUniformMat4f("Model_Matrix", object->getLocalTransform());
 	object->getShader()->setUniformMat4f("MVP_matrix", MVP);
+
+	object->getShader()->setUniform1i("output_type", parameters.active_shader_output_index);
 
 	auto materials = object->getMaterials();
 

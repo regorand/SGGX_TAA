@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "../geometry/Utils.h"
+#include "RasterizationObject.h"
 #include "SceneObject.h"
 #include "Renderer.h"
 #include "Camera.h"
@@ -14,7 +15,11 @@
 class SceneController
 {
 private:
-	std::vector<std::shared_ptr<SceneObject>> sceneObjects;
+	std::map<std::string, std::shared_ptr<SceneObject>> sceneObjects;
+	std::shared_ptr<SceneObject> activeObject = nullptr;
+
+
+	std::vector<std::shared_ptr<RasterizationObject>> rasterizationObjects;
 	std::vector<std::shared_ptr<Light>> sceneLights;
 
 	std::shared_ptr<RayMarchObject> rayObj;
@@ -34,7 +39,7 @@ public:
 	bool init();
 	void doFrame();
 
-	bool initVoxels(Mesh_Object_t obj);
+	bool initVoxels(Mesh_Object_t &obj, unsigned int dimension, std::shared_ptr<VoxelGrid> &voxels);
 
 	void updateCamera();
 	std::shared_ptr<RayMarchObject> setupRayMarchingQuad();
@@ -44,4 +49,4 @@ public:
 	void reloadShaders();
 };
 
-std::shared_ptr<SceneObject> registerSceneObject(Mesh_Object_t &source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix)
+std::shared_ptr<RasterizationObject> registerSceneObject(Mesh_Object_t& source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix);

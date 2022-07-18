@@ -208,7 +208,7 @@ void main() {
         */
     }
 
-    out_color += 0.3 * vec4(voxelIndex / dimension, 1);
+    //out_color += 0.3 * vec4(voxelIndex / dimension, 1);
     //out_color *= factor;
     //out_color = vec4(factor, factor, factor, 1);
     //out_color = factor * vec4(count, count, count, 1) / 40;

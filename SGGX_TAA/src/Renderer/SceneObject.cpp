@@ -1,66 +1,40 @@
 #include "SceneObject.h"
 
-SceneObject::SceneObject(std::shared_ptr<VertexArray> vertexArray, 
-	std::shared_ptr<IndexBuffer> index_buffer, 
-	std::shared_ptr<Shader> shader, 
-	glm::mat4 model_matrix, 
-	std::vector<Material> materials):
-	m_VertexArray(vertexArray), m_Index_buffer(index_buffer), m_Shader(shader), m_ModelMatrix(model_matrix), m_Materials(materials)
-{ 
-	m_LocalTransformationMatrix = glm::mat4(1);
-}
+SceneObject::SceneObject()
+	: m_rasterization_object(nullptr), m_voxels(nullptr)
+{}
 
-void SceneObject::setLocalTransformation(glm::mat4 local_transformation)
+bool SceneObject::hasRasterizationObject()
 {
-	m_LocalTransformationMatrix = local_transformation;
+	return m_rasterization_object != nullptr;
 }
 
-std::shared_ptr<VertexArray> SceneObject::getVertexArray() {
-	return m_VertexArray;
-}
-
-std::shared_ptr<IndexBuffer> SceneObject::getIndexBuffer()
+bool SceneObject::hasVoxels()
 {
-	return m_Index_buffer;
+	return m_voxels != nullptr;
 }
 
-std::shared_ptr<Shader> SceneObject::getShader()
+void SceneObject::registerRasterizationObject(std::shared_ptr<RasterizationObject> &rasterization_object)
 {
-	return m_Shader;
+	m_rasterization_object = rasterization_object;
 }
 
-std::vector<Material> SceneObject::getMaterials()
+void SceneObject::registerVoxels(std::shared_ptr<VoxelGrid> &voxels)
 {
-	return m_Materials;
+	m_voxels = voxels;
 }
 
-void SceneObject::addArrayBuffer(std::shared_ptr<ArrayBuffer> aBuf)
-{
-	m_ArrayBuffers.push_back(aBuf);
+void SceneObject::reloadShaders() {
+	m_rasterization_object->getShader()->reloadShader();
+	// TODO currently don't reload voxel shader here because that is stored at different location
 }
 
-void SceneObject::addTexture(std::shared_ptr<Texture> texture)
+std::shared_ptr<RasterizationObject> SceneObject::getRasterizationObject()
 {
-	m_Textures.push_back(texture);
+	return m_rasterization_object;
 }
 
-
-std::vector<std::shared_ptr<Texture>> SceneObject::getTextures()
+std::shared_ptr<VoxelGrid> SceneObject::getVoxels()
 {
-	return m_Textures;
-}
-
-void SceneObject::reloadShaders()
-{
-	m_Shader->reloadShader();
-}
-
-glm::mat4 SceneObject::getModelMatrix()
-{
-	return m_ModelMatrix;
-}
-
-glm::mat4 SceneObject::getLocalTransform()
-{
-	return m_ModelMatrix * m_LocalTransformationMatrix;
+	return m_voxels;
 }

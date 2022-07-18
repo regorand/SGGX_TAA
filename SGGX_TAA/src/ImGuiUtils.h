@@ -48,7 +48,7 @@ void initImGui() {
     updateLoadableObjects();
 }
 
-void doImGui(SceneController controller) {
+void doImGui(SceneController &controller) {
     ImGui::Begin("Window Controls");
 
     if (ImGui::Button("reload shaders")) {
@@ -68,7 +68,11 @@ void doImGui(SceneController controller) {
     if (loadableObjs.size() > 0) {
         doCombo("Loadable Obj", parameters.selected_file, loadableObjs);
     }
-    if (ImGui::Button("Load Selected File")) coin
+    if (ImGui::Button("Load Selected File")) {
+        if (parameters.selected_file != "") {
+            controller.loadAndDisplayObject(parameters.selected_file);
+        }
+    }
 
     //ImGui::Combo("Shader Output type", &parameters.current_shader_output, shader_output_items, shader_output_count);
 

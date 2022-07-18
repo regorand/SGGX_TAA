@@ -7,7 +7,7 @@
 #include "../file_utils.h"
 
 SceneController::SceneController()
-    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(new VoxelGrid(30))
+    : camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(nullptr)
 {}
 
 SceneController::~SceneController()
@@ -43,6 +43,8 @@ bool SceneController::init()
     Mesh_Object_t mesh_left;
     Mesh_Object_t mesh_right;
 
+    loadAndDisplayObject(model_dir_flat + model_name_flat);
+
     //bool res =  loadObjMesh(model_dir_flat, model_name_flat, mesh_left, ShadingType::FLAT);
     bool res = loadObjMesh(model_dir_tree, model_name_tree, mesh_left, ShadingType::FLAT);
     //bool res = loadObjMesh(model_dir_tree2, model_name_tree2, mesh_left, ShadingType::FLAT);
@@ -58,8 +60,8 @@ bool SceneController::init()
     
     if (shader_left->isValid()) {
         glm::mat4 translation_matrix_left = glm::translate(glm::vec3(2, 0, 0));
-        std::shared_ptr<SceneObject> object = registerSceneObject(mesh_left, shader_left, translation_matrix_left);
-        sceneObjects.push_back(object);
+        std::shared_ptr<RasterizationObject> object = registerSceneObject(mesh_left, shader_left, translation_matrix_left);
+        rasterizationObjects.push_back(object);
     }
     
     /*
@@ -79,7 +81,7 @@ bool SceneController::init()
     glm::mat4 projection_matrix = glm::perspective(parameters.fov, ((float) parameters.windowWidth) / parameters.windowHeight, 0.01f, 1000.0f);
     renderer.setProjection(projection_matrix);
 
-    initVoxels(mesh_left);
+    initVoxels(mesh_left, 30, m_voxels);
 
     getLoadableObj("res/models/");
 
@@ -92,12 +94,16 @@ void SceneController::doFrame()
     if (parameters.active_render_type == "Rasterization") 
     {
         glm::mat4 rot = glm::eulerAngleXYZ(parameters.rotation[0], parameters.rotation[1], parameters.rotation[2]);
-
-        //camera.update();
-        for (auto& object : sceneObjects) {
-            if (object->getShader()->isValid()) {
-                object->setLocalTransformation(rot);
-                renderer.render(object.get(), camera, sceneLights);
+        if (activeObject && activeObject->hasRasterizationObject()) {
+            renderer.render(activeObject->getRasterizationObject().get(), camera, sceneLights);
+        }
+        else {
+            //camera.update();
+            for (auto& object : rasterizationObjects) {
+                if (object->getShader()->isValid()) {
+                    object->setLocalTransformation(rot);
+                    renderer.render(object.get(), camera, sceneLights);
+                }
             }
         }
     }
@@ -131,6 +137,120 @@ void SceneController::doFrame()
     */
 }
 
+bool SceneController::initVoxels(Mesh_Object_t& obj, unsigned int dimension, std::shared_ptr<VoxelGrid> &voxels)
+{
+    voxels = std::make_shared<VoxelGrid>(dimension);
+
+    std::cout << "Initializing Voxels" << std::endl;
+    voxels->setLower(obj.lower);
+    voxels->setHigher(obj.higher);
+    float voxelSize = voxels->getVoxelSize();
+    //auto dimension = voxels->getDimension();
+    /*
+    for (uint16_t x = 0; x < dimension; x++) {
+        for (uint16_t y = 0; y < dimension; y++) {
+            for (uint16_t z = 0; z < dimension; z++) {
+                glm::u16vec3 idx_vec = glm::u16vec3(x, y, z);
+                uint16_t dist = glm::floor(glm::length(glm::vec3(idx_vec) - glm::vec3(dimension / 2)));
+                float len = glm::sqrt(idx_vec.x* idx_vec.x + idx_vec.y * idx_vec.y + idx_vec.z * idx_vec.z);
+
+                float lower = 5;
+                if (dist > lower && dist <= lower + 1) {
+                    voxels->setVoxel(idx_vec, { 1 });
+                }
+                else {
+                    voxels->setVoxel(idx_vec, { 0 });
+                }
+            }
+        }
+    }
+    */
+    unsigned int count = 0;
+    for (uint32_t idx = 0; idx < obj.indices.size(); idx += 3) {
+        if (idx % 3000 == 0) {
+            std::cout << "voxelizing triangle #" << idx / 3 << std::endl;
+        }
+        glm::vec3 v1 = glm::vec3(obj.vertices[3 * obj.indices[idx]], obj.vertices[3 * obj.indices[idx] + 1], obj.vertices[3 * obj.indices[idx] + 2]);
+        glm::vec3 v2 = glm::vec3(obj.vertices[3 * obj.indices[idx + 1]], obj.vertices[3 * obj.indices[idx + 1] + 1], obj.vertices[3 * obj.indices[idx + 1] + 2]);
+        glm::vec3 v3 = glm::vec3(obj.vertices[3 * obj.indices[idx + 2]], obj.vertices[3 * obj.indices[idx + 2] + 1], obj.vertices[3 * obj.indices[idx + 2] + 2]);
+
+        glm::vec3 n1 = glm::vec3(obj.normals[3 * obj.indices[idx]], obj.normals[3 * obj.indices[idx] + 1], obj.normals[3 * obj.indices[idx] + 2]);
+        glm::vec3 n2 = glm::vec3(obj.normals[3 * obj.indices[idx + 1]], obj.normals[3 * obj.indices[idx + 1] + 1], obj.normals[3 * obj.indices[idx + 1] + 2]);
+        glm::vec3 n3 = glm::vec3(obj.normals[3 * obj.indices[idx + 2]], obj.normals[3 * obj.indices[idx + 2] + 1], obj.normals[3 * obj.indices[idx + 2] + 2]);
+
+        glm::vec3 center = (v1 + v2 + v3) / glm::vec3(3);
+        glm::vec3 normal = (n1 + n2 + n3) / glm::vec3(3);
+
+        glm::u16vec3 idx_vec = glm::u16vec3(glm::floor((center - voxels->getLower()) / voxels->getVoxelSize()));
+        if (idx_vec.x >= 0 && idx_vec.x < dimension
+            && idx_vec.y >= 0 && idx_vec.y < dimension
+            && idx_vec.z >= 0 && idx_vec.z < dimension) {
+            auto voxel = voxels->getVoxel(idx_vec);
+            float density = glm::min(0.03f + voxel.val, 1.0f);
+            glm::vec3 n = normal + glm::vec3(voxel.normal_x, voxel.normal_y, voxel.normal_z);
+
+            voxels->setVoxel(idx_vec, { density, normal.x, normal.y, normal.z });
+        }
+    }
+
+
+    /*
+    for (uint32_t idx = 0; idx < obj.indices.size(); idx+=3) {
+        //std::cout << "Doing triangle idx: " << idx << "\ttriangle#: " << idx / 3 << std::endl;
+        glm::vec3 v1 = glm::vec3(obj.vertices[obj.indices[idx]], obj.vertices[obj.indices[idx] + 1], obj.vertices[obj.indices[idx] + 2]);
+        glm::vec3 v2 = glm::vec3(obj.vertices[obj.indices[idx + 1]], obj.vertices[obj.indices[idx + 1] + 1], obj.vertices[obj.indices[idx + 1] + 2]);
+        glm::vec3 v3 = glm::vec3(obj.vertices[obj.indices[idx + 2]], obj.vertices[obj.indices[idx + 2] + 1], obj.vertices[obj.indices[idx + 2] + 2]);
+
+        glm::vec3 normal = glm::cross(v2 - v1, v3 - v1);
+        float d = glm::dot(v1, normal);
+
+        for (uint16_t x = 0; x < dimension; x++) {
+            for (uint16_t y = 0; y < dimension; y++) {
+                for (uint16_t z = 0; z < dimension; z++) {
+                    glm::u16vec3 idx_vec = glm::u16vec3(x, y, z);
+                    glm::vec3 center = voxels->getCenterOfVoxel(idx_vec);
+                    float dist_to_triangles = 2 * voxelSize;
+                    float dot = glm::dot(normal, glm::vec3(1, 0, 0));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    dot = glm::dot(normal, glm::vec3(0, 1, 0));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    dot = glm::dot(normal, glm::vec3(0, 0, 1));
+                    if (dot != 0) {
+                        float t = d - glm::dot(center, normal) / dot;
+                        dist_to_triangles = glm::min(dist_to_triangles, glm::abs(t));
+                    }
+
+                    if (dist_to_triangles < glm::sqrt(3 * voxelSize * voxelSize)) {
+                        voxels->setVoxel(idx_vec, { 1 });
+                    }
+                    else {
+                        voxels->setVoxel(idx_vec, { 0 });
+                    }
+                }
+            }
+        }
+    }
+    */
+    voxels->initBuffers();
+
+    unsigned int voxel_count = voxels->countVoxels();
+    unsigned int non_empty_voxels = voxels->countNonEmptyVoxels();
+    std::cout << "Voxel count: " << voxel_count << "\n";
+    std::cout << "Non empty Voxel count: " << non_empty_voxels << "\n";
+    std::cout << "Abs difference: " << (voxel_count - non_empty_voxels) << "\n";
+    std::cout << "Voxelgrid density: " << ((float)non_empty_voxels) / voxel_count << std::endl;
+
+    return true;
+}
+/*
 bool SceneController::initVoxels(Mesh_Object_t obj)
 {
     std::cout << "Initializing Voxels" << std::endl;
@@ -156,7 +276,6 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
             }
         }
     }
-    */
     unsigned int count = 0;
     for (uint32_t idx = 0; idx < obj.indices.size(); idx += 3) {
         if (idx % 3000 == 0) {
@@ -233,7 +352,6 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
             && idx_vec.z >= 0 && idx_vec.z < dimension) {
             m_voxels->setVoxel(idx_vec, { 1, normal23.x, normal23.y, normal23.z });
         }
-        */
     }
 
 
@@ -281,7 +399,6 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
             }
         }
     }
-    */
     m_voxels->initBuffers();
 
     unsigned int voxels = m_voxels->countVoxels();
@@ -293,7 +410,7 @@ bool SceneController::initVoxels(Mesh_Object_t obj)
 
     return true;
 }
-
+*/
 void SceneController::updateCamera()
 {
     float dist = parameters.camera_dist * parameters.camera_dist;
@@ -310,13 +427,16 @@ void SceneController::updateCamera()
 
 void SceneController::reloadShaders()
 {
-    for (auto& object : sceneObjects) {
+    for (auto& object : rasterizationObjects) {
         object->reloadShaders();
+    }
+    for (auto& object : sceneObjects) {
+        object.second->reloadShaders();
     }
     rayObj->reloadShader();
 }
 
-std::shared_ptr<SceneObject> registerSceneObject(Mesh_Object_t &source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix) {
+std::shared_ptr<RasterizationObject> registerSceneObject(Mesh_Object_t &source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix) {
     shader->bind();
     std::shared_ptr<VertexArray> va = std::make_shared<VertexArray>();
 
@@ -343,7 +463,7 @@ std::shared_ptr<SceneObject> registerSceneObject(Mesh_Object_t &source, std::sha
         object->addArrayBuffer(colors);
     }*/
         std::shared_ptr<IndexBuffer> ib = std::make_shared<IndexBuffer>(source.indices.data(), source.indices.size());
-        std::shared_ptr<SceneObject> object = std::make_shared<SceneObject>(va, ib, shader, model_matrix, source.materials);
+        std::shared_ptr<RasterizationObject> object = std::make_shared<RasterizationObject>(va, ib, shader, model_matrix, source.materials);
 
     object->addArrayBuffer(vertices);
     object->addArrayBuffer(normals);
@@ -385,8 +505,41 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
 void SceneController::loadAndDisplayObject(std::string object_path)
 {
     if (!std::filesystem::exists(object_path)) {
-        std::cout << "Error: Can't find objecft file: " << object_path << std::endl;
+        std::cout << "Error: Can't find object file: " << object_path << std::endl;
     }
 
+    if (sceneObjects.find(object_path) != sceneObjects.end()) {
+        activeObject = sceneObjects[object_path];
+    }
+    std::shared_ptr<SceneObject> scene_object = std::make_shared<SceneObject>();
 
+    Mesh_Object_t mesh;
+
+    std::filesystem::path path(object_path);
+    std::string filename = path.filename().string();
+
+    std::string dir = path.remove_filename().string();
+    bool res = loadObjMesh(dir, filename, mesh, ShadingType::FLAT);
+
+    if (!res) {
+        std::cout << "Failed to load obj file: " << dir + filename << std::endl;
+    }
+
+    const std::string rasterization_vert_path = "res/shaders/shader.vert";
+    const std::string phong_frag_path = "res/shaders/phong.frag";
+
+    std::shared_ptr<Shader> rasterization_shader = std::make_shared<Shader>(rasterization_vert_path, phong_frag_path);
+
+    if (rasterization_shader->isValid()) {
+        std::shared_ptr<RasterizationObject> object = registerSceneObject(mesh, rasterization_shader, glm::mat4(1));
+        scene_object->registerRasterizationObject(object);
+    }
+
+    std::shared_ptr<VoxelGrid> voxels;
+    if (initVoxels(mesh, 30, voxels)) {
+        scene_object->registerVoxels(voxels);
+    }
+
+    sceneObjects[object_path] = scene_object;
+    activeObject = scene_object;
 }

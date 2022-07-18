@@ -8,7 +8,7 @@
 #include "../gl_wrappers/VertexArray.h"
 #include "../gl_wrappers/IndexBuffer.h"
 #include "../gl_wrappers/Shader.h"
-#include "SceneObject.h"
+#include "RasterizationObject.h"
 #include "Camera.h"
 #include "Light.h"
 #include "RayMarchObject.h"
@@ -21,7 +21,7 @@ public:
 	Renderer();
 	~Renderer() {};
 
-	void render(SceneObject* object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights);
+	void render(RasterizationObject* object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights);
 	void renderRayMarching(RayMarchObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights);
 	void renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels);
 
