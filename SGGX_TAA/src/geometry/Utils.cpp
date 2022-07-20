@@ -7,13 +7,19 @@ void make_flat_shaded(std::vector<float>& vertices,
 	std::vector<float>& normals,
 	std::vector<float>& colors,
 	std::vector<float>& tex_coords,
-	std::vector<tinyobj::index_t>& indices,
+	std::vector<tinyobj::index_t>& indices, 
+	std::vector<int> face_material_indices,
 	Mesh_Object_t& target) {
 
 	std::map<unsigned int, std::vector<unsigned int>> tex_map;
 	int max_index = 0;
 	target.lower = glm::vec3(INFINITY);
 	target.higher = glm::vec3(-INFINITY);
+
+	bool writeMaterialIndices = false;
+	if (face_material_indices.size() == indices.size() / 3) {
+		writeMaterialIndices = true;
+	}
 
 	std::cout << "Handling indices in flat_shaded" << std::endl;
 	for (size_t i = 0; i < indices.size(); i++) {
@@ -51,6 +57,8 @@ void make_flat_shaded(std::vector<float>& vertices,
 		tex_map[indices[i].vertex_index].push_back(indices[i].texcoord_index);
 
 		target.indices.push_back(i);
+		if (writeMaterialIndices) target.face_material_indices.push_back(face_material_indices[i / 3]);
+
 	}
 
 	//std::cout << "Handling Vertex tex_coords" << "\n" << std::endl;
@@ -80,6 +88,7 @@ void make_smooth_shaded(std::vector<float>& vertices,
 	std::vector<float>& colors,
 	std::vector<float>& tex_coords,
 	std::vector<tinyobj::index_t>& indices,
+	std::vector<int> face_material_indices,
 	Mesh_Object_t& target) {
 
 	struct vertex_attrib_s {
@@ -180,10 +189,21 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 
 	if (shadingType == ShadingType::FLAT) {
 		//make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
-		make_flat_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
+		make_flat_shaded(attrib.vertices, 
+			attrib.normals, 
+			attrib.colors, 
+			attrib.texcoords, 
+			shape.mesh.indices, 
+			shape.mesh.material_ids, 
+			target);
 	}
 	else if (shadingType == ShadingType::SMOOTH) {
-		make_smooth_shaded(attrib.vertices, attrib.normals, attrib.colors, attrib.texcoords, shape.mesh.indices, target);
+		make_smooth_shaded(attrib.vertices,
+			attrib.normals, attrib.colors,
+			attrib.texcoords,
+			shape.mesh.indices,
+			shape.mesh.material_ids,
+			target);
 	}
 
 	for (auto& mat : materials) {
@@ -241,6 +261,9 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 	size_t indices_size = 0;
 	fin.read((char*)&indices_size, sizeof(size_t));
 
+	size_t face_mat_indices_size = 0;
+	fin.read((char*)&face_mat_indices_size, sizeof(size_t));
+
 	size_t materials_size = 0;
 	fin.read((char*)&materials_size, sizeof(size_t));
 
@@ -289,6 +312,14 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		target.indices = indices;
 	}
 
+	if (face_mat_indices_size > 0) {
+		unsigned int* face_mat_indices_buffer = new unsigned int[face_mat_indices_size];
+		fin.read((char*)face_mat_indices_buffer, face_mat_indices_size * sizeof(unsigned int));
+		std::vector<unsigned int> face_mat_indices(face_mat_indices_buffer, face_mat_indices_buffer + face_mat_indices_size);
+		delete face_mat_indices_buffer;
+		target.face_material_indices = face_mat_indices;
+	}
+
 	if (materials_size > 0) {
 		serializable_material* materials_buffer = new serializable_material[materials_size];
 		fin.read((char*)materials_buffer, materials_size * sizeof(serializable_material));
@@ -332,6 +363,9 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	size_t indices_size = object.indices.size();
 	fout.write((char*) &indices_size, sizeof(size_t));
 
+	size_t face_mat_indices_size = object.face_material_indices.size();
+	fout.write((char*)&face_mat_indices_size, sizeof(size_t));
+
 	size_t materials_size = object.materials.size();
 	fout.write((char*)&materials_size, sizeof(size_t));
 
@@ -345,6 +379,7 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	fout.write((char*) object.normals.data(), normals_size * sizeof(float));
 	fout.write((char*) object.colors.data(), colors_size * sizeof(float));
 	fout.write((char*) object.indices.data(), indices_size * sizeof(unsigned int));
+	fout.write((char*) object.face_material_indices.data(), face_mat_indices_size * sizeof(unsigned int));
 
 	std::vector<serializable_material> serializable_mats;
 

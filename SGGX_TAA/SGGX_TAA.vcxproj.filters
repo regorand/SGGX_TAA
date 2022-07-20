@@ -90,6 +90,9 @@
     <ClCompile Include="src\Renderer\SceneObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils\Loader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\3rd_party\imgui\stb_truetype.h">
@@ -113,7 +116,7 @@
     <ClInclude Include="src\3rd_party\imgui\stb_textedit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\file_utils.h">
+    <ClInclude Include="src\utils\file_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gl_wrappers\ArrayBuffer.h">
@@ -137,7 +140,7 @@
     <ClInclude Include="src\3rd_party\obj\tiny_obj_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\GL_Utils.h">
+    <ClInclude Include="src\utils\GL_Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Renderer\RasterizationObject.h">
@@ -185,10 +188,13 @@
     <ClInclude Include="src\Types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ImGuiUtils.h">
+    <ClInclude Include="src\utils\ImGuiUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Renderer\SceneObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

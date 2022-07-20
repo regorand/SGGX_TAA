@@ -11,6 +11,7 @@
 #include "Light.h"
 #include "RayMarchObject.h"
 #include "../geometry/VoxelGrid.h"
+#include "../utils/Loader.h"
 
 class SceneController
 {
@@ -18,18 +19,16 @@ private:
 	std::map<std::string, std::shared_ptr<SceneObject>> sceneObjects;
 	std::shared_ptr<SceneObject> activeObject = nullptr;
 
-
-	std::vector<std::shared_ptr<RasterizationObject>> rasterizationObjects;
 	std::vector<std::shared_ptr<Light>> sceneLights;
 
 	std::shared_ptr<RayMarchObject> rayObj;
 	std::shared_ptr<VoxelGrid> m_voxels;
 
+	std::string currentlyLoadingPath;
+
 	Renderer renderer;
 	Camera camera;
-
-	float angleY = 0;
-	float angle_speed_Y = 0.01f;
+	Loader loader;
 
 public:
 	SceneController();
@@ -39,14 +38,17 @@ public:
 	bool init();
 	void doFrame();
 
-	bool initVoxels(Mesh_Object_t &obj, unsigned int dimension, std::shared_ptr<VoxelGrid> &voxels);
-
+	void updateModels();
 	void updateCamera();
+	void lookAtObject();
 	std::shared_ptr<RayMarchObject> setupRayMarchingQuad();
 
 	void loadAndDisplayObject(std::string object_path);
 
 	void reloadShaders();
-};
 
-std::shared_ptr<RasterizationObject> registerSceneObject(Mesh_Object_t& source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix);
+private:
+
+	bool switchRenderedObject(std::string path);
+	bool removeSceneObject(std::string path, bool evenIfActive = false);
+};

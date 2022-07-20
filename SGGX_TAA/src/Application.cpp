@@ -16,13 +16,13 @@
 #include "3rd_party/imgui/imgui.h"
 #include "3rd_party/imgui/imgui_impl_glfw_gl3.h"
 
-#include "GL_Utils.h"
+#include "utils/GL_Utils.h"
 
 #include "Renderer/SceneController.h"
 #include "Parameters.h"
 #include "Types.h"
 
-#include "ImGuiUtils.h"
+#include "utils/ImGuiUtils.h"
 
 //void doImgGui(SceneController controller);
 

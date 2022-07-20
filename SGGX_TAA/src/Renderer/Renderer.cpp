@@ -20,10 +20,7 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 
 	auto materials = object->getMaterials();
 
-	if (object->getTextures().size() != 0) {
-		object->getTextures()[0]->Bind(0);
-		object->getShader()->setUniform1i("diff_texture", 0);
-	}
+	
 
 	//glm::vec3 lightDirection = glm::vec3(glm::cos(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]), 
 	//	glm::sin(parameters.light_direction[1]), 
@@ -41,6 +38,16 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 	object->getShader()->setUniform1i("num_lights", lights.size());
 	object->getShader()->setUniform3fv("light_positions", lights.size(), lights_pos.data());
 	object->getShader()->setUniform3fv("lights_intensities", lights.size(), lights_intensities.data());
+
+	if (object->getTextures().size() != 0) {
+		
+	}
+	std::vector<std::shared_ptr<Texture>> textures = object->getTextures();
+	unsigned int num_textures = glm::min(textures.size(), MAX_TEXTURES);
+	for (size_t i = 0; i < num_textures; i++) {
+		object->getTextures()[i]->Bind(i);
+		object->getShader()->setUniform1i("textures[" + std::to_string(i) + "]", i);
+	}
 
 	if (materials.size() > 0) {
 		object->getShader()->setUniform3f("K_A", materials[0].m_KA);
@@ -92,20 +99,9 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	object->getShader()->bind();
 
 	object->getShader()->setUniform1i("output_type", parameters.active_shader_output_index);
-	/*
-	float len = glm::length(voxels.getLower());
-	len = glm::max(len, glm::length(voxels.getHigher()));
-	parameters.camera_dist = len * 10;
-	camera.update();
-	*/
 
-	camera.setPosition(camera.getPosition() + glm::vec3(0, parameters.camera_height, 0));
 	glm::mat4 transformation_matrix = camera.getViewMatrix();
 
-	/*
-	object->getShader()->setUniformMat4f("projection_matrix", projectionMatrix);
-	object->getShader()->setUniformMat4f("transformation_matrix", projectionMatrix);
-	*/
 	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
 
 	
@@ -113,6 +109,8 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	object->getShader()->setUniform1f("voxel_size", voxels.getVoxelSize());
 	object->getShader()->setUniform3f("lower", voxels.getLower());
 	object->getShader()->setUniform3f("higher", voxels.getHigher());
+	object->getShader()->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
+	
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 

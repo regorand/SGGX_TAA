@@ -11,6 +11,7 @@ typedef struct Mesh_Object_s {
 	std::vector<float> normals;
 	std::vector<float> colors;
 	std::vector<unsigned int> indices;
+	std::vector<unsigned int> face_material_indices;
 
 	glm::vec3 lower;
 	glm::vec3 higher;

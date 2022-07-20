@@ -4,7 +4,7 @@
 #include <iostream>
 #include <glm/glm.hpp>
 
-#include "../GL_Utils.h"
+#include "../utils/GL_Utils.h"
 
 typedef struct Shader_Definition_s {
 	std::string vertex_path;

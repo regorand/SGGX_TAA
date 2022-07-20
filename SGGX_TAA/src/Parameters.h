@@ -8,24 +8,34 @@
 
 void initParams();
 
-typedef struct params_s {
+typedef struct camera_params_s {
 	float fov = glm::pi<float>() / 3;
+
+	float lookAtPos[3] = { 0, 0, 0 };
+	float cameraPos[2] = { 0, 0 }; // Position of camera around lookAtPos as angles of unit sphere
+	float camera_dist = 4.0; // distance from look at Point
+	float angle_speed = 0.01f;
+
+	bool rotateAzimuth = false;
+	bool rotatePolar = false;
+} Camera_Params;
+
+typedef struct params_s {
+	/* Window */
 	int windowWidth = 1920;
 	int windowHeight = 1080;
 
-	
 	int current_shader_output = 1;
 
-	float camera_dist = 4.0;
-	float camera_height = 0;
-	float camera_rotation[2] = { 0, 0 };
+	int voxel_count = 30;
+	bool forceReload;
+	bool renderVoxelsAABB = false;
 
 	std::string active_shader_output = "";
 	int active_shader_output_index = 0;
 	std::string active_render_type = "";
 	std::string selected_file = "";
 
-	float rotation[3] = { 0, 0, 0 };
 	float light_direction[2] = { 0, 0 };
 	bool printUniformNotFound = false;
 	bool showAABBOutline = false;
@@ -38,3 +48,5 @@ typedef struct params_s {
 } Parameters;
 
 extern Parameters parameters;
+
+extern Camera_Params camera_params;

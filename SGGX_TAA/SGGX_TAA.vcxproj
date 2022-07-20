@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\utils\Loader.cpp" />
     <ClCompile Include="src\Renderer\SceneObject.cpp" />
     <ClCompile Include="src\gl_wrappers\ShaderStorageBuffer.cpp" />
     <ClCompile Include="src\geometry\SGGX_Distribution.cpp" />
@@ -46,8 +47,9 @@
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\utils\Loader.h" />
     <ClInclude Include="src\Renderer\SceneObject.h" />
-    <ClInclude Include="src\ImGuiUtils.h" />
+    <ClInclude Include="src\utils\ImGuiUtils.h" />
     <ClInclude Include="src\Types.h" />
     <ClInclude Include="src\gl_wrappers\ShaderStorageBuffer.h" />
     <ClInclude Include="src\geometry\mesh_object.h" />
@@ -62,7 +64,7 @@
     <ClInclude Include="src\Renderer\SceneController.h" />
     <ClInclude Include="src\Renderer\RasterizationObject.h" />
     <ClInclude Include="src\3rd_party\obj\tiny_obj_loader.h" />
-    <ClInclude Include="src\GL_Utils.h" />
+    <ClInclude Include="src\utils\GL_Utils.h" />
     <ClInclude Include="src\Renderer\Renderer.h" />
     <ClInclude Include="src\gl_wrappers\Shader.h" />
     <ClInclude Include="src\gl_wrappers\IndexBuffer.h" />
@@ -73,7 +75,7 @@
     <ClInclude Include="src\3rd_party\imgui\stb_rect_pack.h" />
     <ClInclude Include="src\3rd_party\imgui\stb_textedit.h" />
     <ClInclude Include="src\3rd_party\imgui\stb_truetype.h" />
-    <ClInclude Include="src\file_utils.h" />
+    <ClInclude Include="src\utils\file_utils.h" />
     <ClInclude Include="src\gl_wrappers\ArrayBuffer.h" />
     <ClInclude Include="src\geometry\Utils.h" />
     <ClInclude Include="src\gl_wrappers\VertexArray.h" />

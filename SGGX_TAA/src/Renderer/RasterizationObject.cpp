@@ -55,6 +55,11 @@ std::vector<std::shared_ptr<Texture>> RasterizationObject::getTextures()
 	return m_Textures;
 }
 
+bool RasterizationObject::isRenderable()
+{
+	return m_Shader->isValid();
+}
+
 void RasterizationObject::reloadShaders()
 {
 	m_Shader->reloadShader();

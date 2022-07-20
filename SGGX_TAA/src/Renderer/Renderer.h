@@ -14,6 +14,9 @@
 #include "RayMarchObject.h"
 #include "../geometry/VoxelGrid.h"
 
+// has corresponding const in phong shader
+static const unsigned int MAX_TEXTURES = 4;
+
 class Renderer
 {
 	glm::mat4 projectionMatrix;

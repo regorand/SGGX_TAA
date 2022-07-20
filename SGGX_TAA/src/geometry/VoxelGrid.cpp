@@ -93,6 +93,12 @@ void VoxelGrid::initBuffers()
 	m_isInit = true;
 }
 
+void VoxelGrid::deleteBuffers()
+{
+	m_ssb = nullptr;
+	m_isInit = false;
+}
+
 unsigned int VoxelGrid::countVoxels()
 {
 	return glm::pow((uint32_t)m_dimension, 3);

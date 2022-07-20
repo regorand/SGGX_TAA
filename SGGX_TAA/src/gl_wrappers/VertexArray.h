@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ArrayBuffer.h"
-#include "../GL_Utils.h"
+#include "../utils/GL_Utils.h"
 
 class VertexArray
 {

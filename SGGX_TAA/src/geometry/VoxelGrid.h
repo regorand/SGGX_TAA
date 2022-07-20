@@ -50,6 +50,7 @@ public:
 	bool isInit();
 
 	void initBuffers();
+	void deleteBuffers();
 
 	unsigned int countVoxels();
 	unsigned int countNonEmptyVoxels();

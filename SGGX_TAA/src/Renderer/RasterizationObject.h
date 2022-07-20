@@ -48,6 +48,8 @@ public:
     void addTexture(std::shared_ptr<Texture> texture);
     std::vector<std::shared_ptr<Texture>> getTextures();
 
+    bool isRenderable();
+
     void reloadShaders();
 
     glm::mat4 getModelMatrix();

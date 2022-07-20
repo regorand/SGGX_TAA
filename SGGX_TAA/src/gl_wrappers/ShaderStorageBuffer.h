@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../GL_Utils.h"
+#include "../utils/GL_Utils.h"
 
 class ShaderStorageBuffer
 {

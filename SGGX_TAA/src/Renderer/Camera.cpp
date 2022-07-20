@@ -13,7 +13,7 @@ Camera::~Camera() {}
 
 glm::mat4 Camera::getViewMatrix()
 {
-	return glm::lookAt(position, viewDirection, up);
+	return glm::lookAt(position, position + viewDirection, up);
 }
 
 glm::vec3 Camera::getPosition()
@@ -40,7 +40,7 @@ std::vector<glm::vec3> Camera::getScreenCoveringQuad()
 {
 	std::vector<glm::vec3> vertices;
 
-	float y_dist = glm::tan(parameters.fov / 2);
+	float y_dist = glm::tan(camera_params.fov / 2);
 	float x_dist = y_dist * ((float) parameters.windowWidth) / parameters.windowHeight;
 
 	viewDirection = glm::normalize(viewDirection);
@@ -57,6 +57,6 @@ std::vector<glm::vec3> Camera::getScreenCoveringQuad()
 
 void Camera::update()
 {
-	position = glm::vec3(0, 0, -(parameters.camera_dist * parameters.camera_dist));
+	position = glm::vec3(0, 0, -(camera_params.camera_dist * camera_params.camera_dist));
 	viewDirection = glm::vec3(0, 0, -1);
 }

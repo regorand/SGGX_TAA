@@ -1,11 +1,13 @@
 #version 430 core
 
 #define MAX_LIGHTS 128
+#define MAX_TEXTURES 4
 
 in vec4 interpolated_color;
 in vec4 world_pos;
 in vec3 normal;
 in vec2 tex_coords;
+flat in uint face_mat_index;
 
 uniform int num_lights;
 uniform vec3 light_positions[MAX_LIGHTS];
@@ -20,6 +22,7 @@ uniform int output_type;
 
 uniform float spec_exponent;
 uniform sampler2D diff_texture;
+uniform sampler2D textures[MAX_TEXTURES];
 
 out vec4 out_color;
 
@@ -32,7 +35,7 @@ vec3 getReflectionDirection(vec3 light_direction, vec3 normal) {
 }
 
 vec4 shade_phong(vec4 diffuse, vec3 normal, vec3 view_direction) {
-    vec4 color = vec4(K_A, 1) * diffuse;
+    vec4 color = /* vec4(K_A, 1)*/ 0.2 * diffuse;
     
     for (int i = 0; i < num_lights; i++) {
         vec3 light_dir = normalize(light_positions[i] - world_pos.xyz);
@@ -44,27 +47,30 @@ vec4 shade_phong(vec4 diffuse, vec3 normal, vec3 view_direction) {
         // remove conditional
         if (light_normal_dot > 0) {
             //float lighting_dot = pos_dot(light_direction, normalized_normal);
+            color += diffuse * /* vec4(K_D, 1) * */ light_normal_dot * vec4(lights_intensities[i], 1);
             color += diffuse * light_normal_dot * vec4(lights_intensities[i], 1);
 
             // use reflect function
             //vec3 reflection_direct = 2 * light_normal_dot * normal - light_direction;
             vec3 reflection_direct = reflect(-light_dir, normal);
-            color += vec4(K_S, 1) * vec4(lights_intensities[i], 1) * pow(pos_dot(view_direction, reflection_direct), spec_exponent);
+            color += /*vec4(K_S, 1) * */ vec4(lights_intensities[i], 1) * pow(pos_dot(view_direction, reflection_direct), spec_exponent);
         }
     }
     return color;
 }
 
 void main() {
-    vec4 diffuse = texture(diff_texture, tex_coords);
-    vec4 lightIntensity = vec4(1, 1, 1, 1);
+    //vec4 diffuse = texture(diff_texture, tex_coords);
+    vec4 diffuse = texture(textures[face_mat_index], tex_coords);
+    vec4 lightIntensity = vec4(1);
+    //vec4 lightIntensity = vec4(0);
     vec3 normalized_normal = normalize(normal);
     vec3 view_direction = normalize(camera_pos - world_pos.xyz);
     
     out_color = vec4(0, 0, 0, 1);
 
     if (output_type == 0) {
-        out_color += vec4(K_A, 1);
+        out_color += vec4(1);
     } else if (output_type == 1) {
         out_color += shade_phong(diffuse, normalized_normal, view_direction);
     } else if (output_type == 2) {
@@ -76,8 +82,18 @@ void main() {
     } else if (output_type == 5) {
         out_color = vec4(world_pos.xyz / world_pos.w, 1);
     } else if (output_type == 6) {
-        //out_color = factor * vec4(voxelIndex / dimension, 1);
-        //out_color = vec4(vec3(density), 1);
+        if (face_mat_index == 0) {
+            out_color = vec4(1, 0, 1, 1);
+        } else if (face_mat_index == 1) {
+            out_color = vec4(1, 0, 0, 1);
+        } else if (face_mat_index == 2) {
+            out_color = vec4(0, 1, 0, 1);
+        } else if (face_mat_index == 3) {
+            out_color = vec4(0, 0, 1, 1);
+        } else {
+            out_color = vec4(1);
+        }
+        out_color = diffuse;
     }
     
 }

@@ -1,5 +1,5 @@
 #include "Texture.h"
-#include "../GL_Utils.h"
+#include "../utils/GL_Utils.h"
 
 #include "../3rd_party/std_image/std_image.h"	
 
