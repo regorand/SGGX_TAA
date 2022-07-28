@@ -10,6 +10,7 @@
 
 #include "mesh_object.h"
 #include "glm/glm.hpp"
+#include "Octree.h"
 // #include "../Renderer/Material.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
@@ -34,6 +35,8 @@ void make_smooth_shaded(std::vector<float>& vertices,
 	std::vector<tinyobj::index_t>& indices,
 	std::vector<int> face_material_indices,
 	Mesh_Object_t& target);
+
+bool build_Obj_Octree(Mesh_Object_t& source, Octree &tree, size_t max_depth);
 
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType);
 //bool loadObjMesh(std::string& full_model_path, Mesh_Object_t& target, const ShadingType shadingType);

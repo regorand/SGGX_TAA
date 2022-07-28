@@ -5,6 +5,8 @@
 class ShaderStorageBuffer
 {
 private:
+	unsigned int m_target;
+	
 	unsigned int m_GlId;
 public:
 	ShaderStorageBuffer(void* data, unsigned int size, unsigned int target, bool dynamic = false);

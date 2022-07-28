@@ -46,6 +46,7 @@ public:
 	void loadAndDisplayObject(std::string object_path);
 
 	void reloadShaders();
+	void reloadOctreeVis();
 
 private:
 

@@ -12,7 +12,7 @@ private:
 	glm::vec3 position;
 	glm::vec3 viewDirection;
 
-	const glm::vec3 up = glm::vec3(0, 1, 0);
+	glm::vec3 up;
 
 public:
 	Camera();
@@ -21,10 +21,12 @@ public:
 
 	glm::mat4 getViewMatrix();
 	glm::vec3 getPosition();
+	glm::vec3 getUpVector();
 
 	void setPosition(glm::vec3 newPosition);
 	void setViewDiretion(glm::vec3 newViewDirection);
 	void setLookAt(glm::vec3 target);
+	void setUpVector(glm::vec3 upVector);
 
 	std::vector<glm::vec3> getScreenCoveringQuad();
 

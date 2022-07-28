@@ -152,6 +152,36 @@ void make_smooth_shaded(std::vector<float>& vertices,
 	}
 }
 
+bool build_Obj_Octree(Mesh_Object_t& source, Octree &tree, size_t max_depth)
+{
+	if (source.vertices.size() % 3 != 0) {
+		std::cout << "Error, invalid size for vertices Array" << std::endl;
+		return false;
+	}
+
+	glm::vec3 halfway = (source.lower + source.higher) / glm::vec3(2);
+	
+	// create single leaf node as root
+	tree.init(source.lower, source.higher);
+	
+	// assign root node all data
+	obj_leaf_node *root_leaf_ptr = nullptr;
+	bool success = tree.getLeafAt(halfway, &root_leaf_ptr);
+	if (!success) return false;
+	root_leaf_ptr->points = source.vertices;
+	
+	size_t maxPointsPerLeaf = 4;
+	
+	// build tree with given data
+	bool build_success = tree.build(max_depth, maxPointsPerLeaf);
+	if (!build_success) {
+		std::cout << "Error: Build of Octree failed" << std::endl;
+	}
+
+	return true;
+}
+
+
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType) {
 	std::string path = model_path + model_name + ".dat";
 	if (std::filesystem::exists(path)) {
@@ -276,7 +306,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		float* vertices_buffer = new float[vertices_size];
 		fin.read((char*)vertices_buffer, vertices_size * sizeof(float));
 		std::vector<float> vertices(vertices_buffer, vertices_buffer + vertices_size);
-		delete vertices_buffer;
+		delete[] vertices_buffer;
 		target.vertices = vertices;
 	}
 
@@ -284,7 +314,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		float* tex_coords_buffer = new float[tex_coords_size];
 		fin.read((char*)tex_coords_buffer, tex_coords_size * sizeof(float));
 		std::vector<float> tex_coords(tex_coords_buffer, tex_coords_buffer + tex_coords_size);
-		delete tex_coords_buffer;
+		delete[] tex_coords_buffer;
 		target.tex_coords = tex_coords;
 	}
 
@@ -292,7 +322,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		float* normals_buffer = new float[normals_size];
 		fin.read((char*)normals_buffer, normals_size * sizeof(float));
 		std::vector<float> normals(normals_buffer, normals_buffer + normals_size);
-		delete normals_buffer;
+		delete[] normals_buffer;
 		target.normals = normals;
 	}
 
@@ -300,7 +330,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		float* colors_buffer = new float[colors_size];
 		fin.read((char*)colors_buffer, colors_size * sizeof(float));
 		std::vector<float> colors(colors_buffer, colors_buffer + colors_size);
-		delete colors_buffer;
+		delete[] colors_buffer;
 		target.colors = colors;
 	}
 
@@ -308,7 +338,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		unsigned int* indices_buffer = new unsigned int[indices_size];
 		fin.read((char*)indices_buffer, indices_size * sizeof(unsigned int));
 		std::vector<unsigned int> indices(indices_buffer, indices_buffer + indices_size);
-		delete indices_buffer;
+		delete[] indices_buffer;
 		target.indices = indices;
 	}
 
@@ -316,7 +346,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		unsigned int* face_mat_indices_buffer = new unsigned int[face_mat_indices_size];
 		fin.read((char*)face_mat_indices_buffer, face_mat_indices_size * sizeof(unsigned int));
 		std::vector<unsigned int> face_mat_indices(face_mat_indices_buffer, face_mat_indices_buffer + face_mat_indices_size);
-		delete face_mat_indices_buffer;
+		delete[] face_mat_indices_buffer;
 		target.face_material_indices = face_mat_indices;
 	}
 
@@ -324,7 +354,7 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t &target)
 		serializable_material* materials_buffer = new serializable_material[materials_size];
 		fin.read((char*)materials_buffer, materials_size * sizeof(serializable_material));
 		std::vector<serializable_material> serialized_materials(materials_buffer, materials_buffer + materials_size);
-		delete materials_buffer;
+		delete[] materials_buffer;
 		target.materials.resize(0);
 		std::transform(serialized_materials.begin(),
 			serialized_materials.end(),

@@ -104,6 +104,8 @@ void Shader::unbind()
 
 bool Shader::setUniform1i(const std::string& name, const unsigned int value)
 {
+	GLint isLinked = 0;
+	glGetProgramiv(m_GlId, GL_LINK_STATUS, &isLinked);
 	int uniformId = getUniformLocation(name);
 	if (uniformId == -1) {
 		printUniformNotFound(name);

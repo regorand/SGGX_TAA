@@ -13,6 +13,7 @@
 #include "Light.h"
 #include "RayMarchObject.h"
 #include "../geometry/VoxelGrid.h"
+#include "../geometry/Octree.h"
 
 // has corresponding const in phong shader
 static const unsigned int MAX_TEXTURES = 4;
@@ -25,8 +26,9 @@ public:
 	~Renderer() {};
 
 	void render(RasterizationObject* object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights);
-	void renderRayMarching(RayMarchObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights);
 	void renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels);
+	void renderOctreeVisualization(RasterizationObject* object, Camera& camera);
+	void renderOctree(RayMarchObject* object, Camera& camera, Octree& octree);
 
 	void setProjection(glm::mat4 projectionMatrix);
 	void setViewMatrix(glm::mat4 viewMatrix);

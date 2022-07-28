@@ -61,62 +61,89 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 	object->getShader()->setUniform1f("ggx_parameter", parameters.ggx_param);
 	object->getShader()->setUniform1i("samples", parameters.num_ggx_samples);
 
+	GLPrintError();
 	glDrawElements(GL_TRIANGLES, object->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+	GLPrintError();
 
 	object->getShader()->unbind();
 	object->getIndexBuffer()->unbind();
 	object->getVertexArray()->unbind();
 }
 
-void Renderer::renderRayMarching(RayMarchObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights)
-{
-	object->getVertexArray()->bind();
-	object->getArrayBuffer()->bind();
-	object->getShader()->bind();
-
-	glm::mat4 transformation_matrix = camera.getViewMatrix();
-
-	object->getShader()->setUniformMat4f("projection_matrix", projectionMatrix);
-	object->getShader()->setUniformMat4f("transformation_matrix", projectionMatrix);
-
-	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
-
-	object->getShader()->setUniform1f("step_distance", parameters.rayMarchDist);
-	object->getShader()->setUniform1f("AABBOutlineFactor", parameters.showAABBOutline);
-	object->getShader()->setUniform1i("max_steps", parameters.rayMarchMaxSteps);
-	
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	object->getVertexArray()->unbind();
-	object->getArrayBuffer()->unbind();
-	object->getShader()->unbind();
-}
-
 void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels)
 {
 	object->getVertexArray()->bind();
 	object->getArrayBuffer()->bind();
-	object->getShader()->bind();
+	auto shader = object->getVoxelShader();
+	voxels.bindBuffers();
+	shader->bind();
 
-	object->getShader()->setUniform1i("output_type", parameters.active_shader_output_index);
+	shader->setUniform1i("output_type", parameters.active_shader_output_index);
 
 	glm::mat4 transformation_matrix = camera.getViewMatrix();
 
-	object->getShader()->setUniform3f("camera_pos", camera.getPosition());
+	shader->setUniform3f("camera_pos", camera.getPosition());
 
-	
-	object->getShader()->setUniform1i("dimension", voxels.getDimension());
-	object->getShader()->setUniform1f("voxel_size", voxels.getVoxelSize());
-	object->getShader()->setUniform3f("lower", voxels.getLower());
-	object->getShader()->setUniform3f("higher", voxels.getHigher());
-	object->getShader()->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
+	shader->setUniform1i("dimension", voxels.getDimension());
+	shader->setUniform1f("voxel_size", voxels.getVoxelSize());
+	shader->setUniform3f("lower", voxels.getLower());
+	shader->setUniform3f("higher", voxels.getHigher());
+	shader->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
 	
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
+	voxels.unbindBuffers();
 	object->getVertexArray()->unbind();
 	object->getArrayBuffer()->unbind();
+	shader->unbind();
+}
+
+void Renderer::renderOctreeVisualization(RasterizationObject* object, Camera& camera)
+{
+	glm::mat4 MVP = projectionMatrix * camera.getViewMatrix() * object->getLocalTransform();
+
+	// line sizes from 0.5 to 10
+	// step size: 0.125
+	glLineWidth(1.0f);
+
+	object->getVertexArray()->bind();
+	object->getIndexBuffer()->bind();
+	object->getShader()->bind();
+
+	object->getShader()->setUniformMat4f("Model_Matrix", object->getLocalTransform());
+	object->getShader()->setUniformMat4f("MVP_matrix", MVP);
+
+	glDrawElements(GL_LINES, object->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+
 	object->getShader()->unbind();
+	object->getIndexBuffer()->unbind();
+	object->getVertexArray()->unbind();
+}
+
+void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octree)
+{
+	object->getVertexArray()->bind();
+	object->getArrayBuffer()->bind();
+	auto shader = object->getOctreeShader();
+	shader->bind();
+
+	octree.bindBuffers();	
+
+	glm::mat4 transformation_matrix = camera.getViewMatrix();
+	shader->setUniform3f("camera_pos", camera.getPosition());
+	
+	shader->setUniform3f("lower", octree.getTreeLower());
+	shader->setUniform3f("higher", octree.getTreeHigher());
+	
+	shader->setUniform1i("output_type", parameters.active_shader_output_index);
+	shader->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	octree.unbindBuffers();
+	object->getVertexArray()->unbind();
+	object->getArrayBuffer()->unbind();
+	shader->unbind();
 }
 
 void Renderer::setProjection(glm::mat4 projectionMatrix)

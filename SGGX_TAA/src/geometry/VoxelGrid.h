@@ -51,6 +51,8 @@ public:
 
 	void initBuffers();
 	void deleteBuffers();
+	bool bindBuffers();
+	bool unbindBuffers();
 
 	unsigned int countVoxels();
 	unsigned int countNonEmptyVoxels();

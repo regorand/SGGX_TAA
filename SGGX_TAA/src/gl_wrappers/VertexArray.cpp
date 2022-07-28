@@ -3,6 +3,7 @@
 
 VertexArray::VertexArray()
 {
+	unbind();
 	glGenVertexArrays(1, &m_GlId);
 	glBindVertexArray(m_GlId);
 }

@@ -151,6 +151,13 @@ void main() {
     vec3 up = normalize(vec3(1, 1, 1));
     vec3 voxel_surface_normal = vec3(0);
 
+    float denom = 50;
+    if (output_type == 6) {
+        //out_color = factor * vec4(voxelIndex / dimension, 1);
+        out_color = vec4(vec3(t_near / denom), 1);
+        return;
+    }
+
     float density_factor = 1;
     while (continueLoop(voxelIndex, dimension)) {
         voxel_surface_normal = vec3(0);

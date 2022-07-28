@@ -88,6 +88,16 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 		std::cout << "Failed to load voxels for obj file: " << dir + filename << std::endl;
 	}
 
+	std::shared_ptr<Octree> octree = std::make_shared<Octree>();
+	bool octree_res = build_Obj_Octree(mesh, *octree, parameters.max_tree_depth);
+	if (!octree_res) {
+		std::cout << "Error, failing at attempting to build octree" << std::endl;
+	}
+	else {
+		octree->createSGGX();
+
+		scene_object->registerOctree(octree);
+	}
 
 	return true;
 }

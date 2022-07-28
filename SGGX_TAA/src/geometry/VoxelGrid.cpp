@@ -88,7 +88,7 @@ bool VoxelGrid::isInit()
 
 void VoxelGrid::initBuffers()
 {
-	unsigned int target = 0;
+	const unsigned int target = 0;
 	m_ssb = std::make_shared<ShaderStorageBuffer>(m_data, m_dimension * m_dimension * m_dimension * sizeof(voxel_t), target);
 	m_isInit = true;
 }
@@ -97,6 +97,24 @@ void VoxelGrid::deleteBuffers()
 {
 	m_ssb = nullptr;
 	m_isInit = false;
+}
+
+bool VoxelGrid::bindBuffers()
+{
+	if (m_ssb != nullptr) {
+		m_ssb->bind();
+		return true;
+	}
+	return false;
+}
+
+bool VoxelGrid::unbindBuffers()
+{
+	if (m_ssb != nullptr) {
+		m_ssb->unbind();
+		return true;
+	}
+	return false;
 }
 
 unsigned int VoxelGrid::countVoxels()

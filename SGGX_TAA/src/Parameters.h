@@ -31,6 +31,13 @@ typedef struct params_s {
 	bool forceReload;
 	bool renderVoxelsAABB = false;
 
+	int min_visualization_depth = 0;
+	int max_visualization_depth = 6;
+
+	// At a depth greater than the max buffer size specified in shader (at the time of this writing 32)
+	// undefined behaviour might occur in shader
+	int max_tree_depth = 8;
+
 	std::string active_shader_output = "";
 	int active_shader_output_index = 0;
 	std::string active_render_type = "";

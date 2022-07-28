@@ -1,6 +1,7 @@
 #include "ShaderStorageBuffer.h"
 
 ShaderStorageBuffer::ShaderStorageBuffer(void* data, unsigned int size, unsigned int target, bool dynamic)
+	:m_target(target)
 {
 	glGenBuffers(1, &m_GlId);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_GlId);
@@ -10,7 +11,7 @@ ShaderStorageBuffer::ShaderStorageBuffer(void* data, unsigned int size, unsigned
 	else {
 		glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_STATIC_DRAW);
 	}
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, target, m_GlId);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_target, m_GlId);
 }
 
 ShaderStorageBuffer::~ShaderStorageBuffer()
@@ -25,7 +26,7 @@ unsigned int ShaderStorageBuffer::getGlId()
 
 void ShaderStorageBuffer::bind()
 {
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_GlId);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, m_target, m_GlId);
 }
 
 void ShaderStorageBuffer::unbind()

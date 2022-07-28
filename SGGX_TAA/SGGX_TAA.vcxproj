@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\geometry\Octree.cpp" />
     <ClCompile Include="src\utils\Loader.cpp" />
     <ClCompile Include="src\Renderer\SceneObject.cpp" />
     <ClCompile Include="src\gl_wrappers\ShaderStorageBuffer.cpp" />
@@ -47,6 +48,7 @@
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\geometry\Octree.h" />
     <ClInclude Include="src\utils\Loader.h" />
     <ClInclude Include="src\Renderer\SceneObject.h" />
     <ClInclude Include="src\utils\ImGuiUtils.h" />

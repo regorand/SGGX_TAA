@@ -1,6 +1,7 @@
 #include "IndexBuffer.h"
 
 #include <GL/glew.h>
+#include "../utils/GL_Utils.h"
 
 IndexBuffer::IndexBuffer(unsigned int* data, unsigned int elem_count): m_GLId(0), count(0)
 {
@@ -17,7 +18,9 @@ IndexBuffer::~IndexBuffer()
 
 void IndexBuffer::bind()
 {
+    GLPrintError();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_GLId);
+    GLPrintError();
 }
 
 void IndexBuffer::unbind()

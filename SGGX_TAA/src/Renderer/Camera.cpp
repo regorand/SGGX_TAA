@@ -6,7 +6,7 @@ Camera::Camera()
 }
 
 Camera::Camera(glm::vec3 position, glm::vec3 viewDirection)
-	:position(position), viewDirection(viewDirection)
+	:position(position), viewDirection(viewDirection), up(glm::vec3(0, 1, 0))
 {}
 
 Camera::~Camera() {}
@@ -19,6 +19,11 @@ glm::mat4 Camera::getViewMatrix()
 glm::vec3 Camera::getPosition()
 {
 	return position;
+}
+
+glm::vec3 Camera::getUpVector()
+{
+	return up;
 }
 
 void Camera::setPosition(glm::vec3 newPosition)
@@ -53,6 +58,11 @@ std::vector<glm::vec3> Camera::getScreenCoveringQuad()
 	vertices.push_back(h + y_dist * up + x_dist * tangent);
 
 	return vertices;
+}
+
+void Camera::setUpVector(glm::vec3 upVector)
+{
+	up = upVector;
 }
 
 void Camera::update()
