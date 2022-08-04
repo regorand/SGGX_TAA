@@ -62,6 +62,7 @@ vec4 shade_phong(vec4 diffuse, vec3 normal, vec3 view_direction) {
 void main() {
     //vec4 diffuse = texture(diff_texture, tex_coords);
     vec4 diffuse = texture(textures[face_mat_index], tex_coords);
+    if (diffuse.x == 0 && diffuse.y == 0 && diffuse.z == 0) diffuse = vec4(1);
     vec4 lightIntensity = vec4(1);
     //vec4 lightIntensity = vec4(0);
     vec3 normalized_normal = normalize(normal);
@@ -72,6 +73,7 @@ void main() {
     if (output_type == 0) {
         out_color += vec4(1);
     } else if (output_type == 1) {
+        out_color += 0.1 * vec4(1);
         out_color += shade_phong(diffuse, normalized_normal, view_direction);
     } else if (output_type == 2) {
         out_color += shade_phong(diffuse, normalized_normal, view_direction);        

@@ -59,8 +59,22 @@ void doImGui(SceneController& controller) {
 
 
 	ImGui::Begin("Rendering Controls");
-	doCombo("Render Type", parameters.active_render_type, render_types);
-	doCombo("Shader Output Type", parameters.active_shader_output, parameters.active_shader_output_index, shader_output_types);
+
+
+	render_type &current = render_types[parameters.current_render_type_index];
+	if (parameters.current_render_type_index == parameters.old_render_type_index) {
+		current.current_render_type = parameters.current_shader_output_index;
+	}
+	else {
+		parameters.old_render_type_index = parameters.current_render_type_index;
+		parameters.current_shader_output_index = current.current_render_type;
+	}
+	std::string shader_output_name = current.shader_output_types[current.current_render_type];
+	doCombo("Render Type", current.name, parameters.current_render_type_index, render_types_names);
+	doCombo("Shader Output Type", shader_output_name, parameters.current_shader_output_index, current.shader_output_types);
+
+	//doCombo("Render Type", parameters.active_render_type, render_types_2);
+	//doCombo("Shader Output Type OLD", parameters.active_shader_output, parameters.active_shader_output_index, shader_output_types);
 	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
 
 	ImGui::NewLine();
@@ -122,17 +136,27 @@ void doImGui(SceneController& controller) {
 	}
 	ImGui::End();
 
-
-	if (parameters.active_render_type == "Octree Visualization")
+	// Probably can combine this OCTREE_RENDER_INDEX
+	if (parameters.current_render_type_index == OCTREE_VIS_RENDER_INDEX)
 	{
 		ImGui::Begin("Octree Visualization Controls");
 		ImGui::SliderInt("Max Tree Depth", &parameters.max_tree_depth, 0, 16);
 
 		ImGui::SliderInt("Min Visualization Depth", &parameters.min_visualization_depth, 0, parameters.max_visualization_depth - 1);
-		ImGui::SliderInt("Max Visualization Depth", &parameters.max_visualization_depth, parameters.min_visualization_depth - 1, 16);
+		ImGui::SliderInt("Max Visualization Depth", &parameters.max_visualization_depth, parameters.min_visualization_depth + 1, 16);
 		if (ImGui::Button("Reload Octree Visualization")) {
 			controller.reloadOctreeVis();
 		}
+		ImGui::End();
+	}
+	else if (parameters.current_render_type_index == OCTREE_RENDER_INDEX) {
+		ImGui::Begin("Octree Controls");
+		ImGui::SliderInt("Min Render Depth", &octree_params.min_render_depth, 0, octree_params.max_render_depth - 1);
+		ImGui::SliderInt("Max Render Depth", &octree_params.max_render_depth, octree_params.min_render_depth + 1, 16);
+
+		ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
+		ImGui::Checkbox("Auto LOD", &octree_params.auto_lod);
+
 		ImGui::End();
 	}
 

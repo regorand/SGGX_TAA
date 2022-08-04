@@ -73,6 +73,14 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	std::string dir = path.remove_filename().string();
 	bool res = loadObjMesh(dir, filename, mesh, ShadingType::FLAT);
 
+	glm::vec3 diff = mesh.higher - mesh.lower;
+	float max_dimension = glm::max(diff.x, glm::max(diff.y, diff.z));
+
+	float max_edge_length = max_dimension / (glm::pow(2, parameters.max_tree_depth));
+	max_edge_length = 0.1f;
+
+	bool tesselation_res = tesselateTriforce(mesh, max_edge_length, -1);
+
 	if (!res) {
 		std::cout << "Failed to load obj file: " << dir + filename << std::endl;
 		return false;
@@ -152,18 +160,10 @@ std::shared_ptr<RasterizationObject> Loader::registerMeshObject(Mesh_Object_t& s
 		}
 	}
 
-	/*/
-if (source.colors.size() != 0) {
-	std::shared_ptr<ArrayBuffer> colors = std::make_shared<ArrayBuffer>(source.colors.data(), source.colors.size() * sizeof(float));
-	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-	glEnableVertexAttribArray(3);
-	object->addArrayBuffer(colors);
-}*/
-
 	const size_t glsl_uint_size = sizeof(GL_UNSIGNED_INT);
 	std::shared_ptr<ArrayBuffer> face_mat_indices = std::make_shared<ArrayBuffer>(source.face_material_indices.data(), source.face_material_indices.size() * glsl_uint_size);
-	glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT, glsl_uint_size, 0);
-	glEnableVertexAttribArray(4);
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, glsl_uint_size, 0);
+	glEnableVertexAttribArray(3);
 
 	std::shared_ptr<IndexBuffer> ib = std::make_shared<IndexBuffer>(source.indices.data(), source.indices.size());
 	std::shared_ptr<RasterizationObject> object = std::make_shared<RasterizationObject>(va, ib, shader, model_matrix, source.materials);

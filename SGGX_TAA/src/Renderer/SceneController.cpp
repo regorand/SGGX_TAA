@@ -51,7 +51,7 @@ void SceneController::doFrame()
 {
 	updateModels();
 	updateCamera();
-	if (parameters.active_render_type == "Rasterization")
+	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRasterizationObject()) {
 			auto object = activeObject->getRasterizationObject();
@@ -64,7 +64,7 @@ void SceneController::doFrame()
 			// TODO output ?
 		}
 	}
-	else if (parameters.active_render_type == "Voxels")
+	else if (parameters.current_render_type_index == VOXEL_INDEX_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRenderableVoxels() && rayObj->hasVoxelShader()) {
 			std::vector<glm::vec3> vertices = camera.getScreenCoveringQuad();
@@ -74,14 +74,14 @@ void SceneController::doFrame()
 		}
 
 	}
-	else if (parameters.active_render_type == "Octree Visualization")
+	else if (parameters.current_render_type_index == OCTREE_VIS_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRenderableOctreeVisualization()) {
 			auto object = activeObject->getOctreeVisObject();
 			renderer.renderOctreeVisualization(object.get(), camera);
 		}
 	}
-	else if (parameters.active_render_type == "Octree")
+	else if (parameters.current_render_type_index == OCTREE_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRenderableOctree() && rayObj->hasValidOctreeShader()) {
 			std::vector<glm::vec3> vertices = camera.getScreenCoveringQuad();
@@ -170,7 +170,7 @@ void SceneController::updateCamera()
 
 void SceneController::lookAtObject()
 {
-	if (parameters.active_render_type == "Rasterization")
+	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRasterizationObject()) {
 			auto object = activeObject->getMeshObject();
@@ -180,7 +180,7 @@ void SceneController::lookAtObject()
 			camera_params.lookAtPos[2] = voxel_center.z;
 		}
 	}
-	else if (parameters.active_render_type == "Voxels")
+	else if (parameters.current_render_type_index == VOXEL_INDEX_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasVoxels()) {
 			auto voxels = activeObject->getVoxels();
@@ -191,7 +191,7 @@ void SceneController::lookAtObject()
 		}
 
 	}
-	else if (parameters.active_render_type == "Octree Visualization" || parameters.active_render_type == "Octree")
+	else if (parameters.current_render_type_index == OCTREE_VIS_RENDER_INDEX || parameters.current_render_type_index == OCTREE_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasOctree()) {
 			auto octree = activeObject->getOctree();

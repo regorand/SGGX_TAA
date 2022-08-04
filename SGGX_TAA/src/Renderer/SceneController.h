@@ -12,6 +12,7 @@
 #include "RayMarchObject.h"
 #include "../geometry/VoxelGrid.h"
 #include "../utils/Loader.h"
+#include "../Types.h"
 
 class SceneController
 {

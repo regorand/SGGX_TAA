@@ -20,6 +20,15 @@ typedef struct camera_params_s {
 	bool rotatePolar = false;
 } Camera_Params;
 
+typedef struct octree_params_s {
+	int min_render_depth = 0;
+	int max_render_depth = 8;
+
+	int roentgen_denominator = 50;
+
+	bool auto_lod = false;
+} Octree_Params;
+
 typedef struct params_s {
 	/* Window */
 	int windowWidth = 1920;
@@ -38,9 +47,11 @@ typedef struct params_s {
 	// undefined behaviour might occur in shader
 	int max_tree_depth = 8;
 
+	int current_render_type_index = 0;
+	int old_render_type_index = current_render_type_index;
+	int current_shader_output_index = 0;
+
 	std::string active_shader_output = "";
-	int active_shader_output_index = 0;
-	std::string active_render_type = "";
 	std::string selected_file = "";
 
 	float light_direction[2] = { 0, 0 };
@@ -57,3 +68,5 @@ typedef struct params_s {
 extern Parameters parameters;
 
 extern Camera_Params camera_params;
+
+extern Octree_Params octree_params;

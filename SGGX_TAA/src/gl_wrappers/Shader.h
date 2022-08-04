@@ -42,7 +42,7 @@ public:
 	void reloadShader();
 	bool isValid() { return valid; }
 private:
-	unsigned int getUniformLocation(const std::string &name);
+	unsigned int getUniformLocation(const std::string name);
 	void printUniformNotFound(std::string name);
 
 	void createShader(const std::string& vertexShader, const std::string& fragmentShader);

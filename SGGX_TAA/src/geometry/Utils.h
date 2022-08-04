@@ -43,3 +43,5 @@ bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t
 
 bool readObjectFromFile(std::string file_name, Mesh_Object_t& target);
 bool saveToFile(std::string file_name, Mesh_Object_t &object);
+
+bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_iteration);

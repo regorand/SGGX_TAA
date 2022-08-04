@@ -2,6 +2,7 @@
 
 //tmp
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 void make_flat_shaded(std::vector<float>& vertices,
 	std::vector<float>& normals,
@@ -169,6 +170,10 @@ bool build_Obj_Octree(Mesh_Object_t& source, Octree &tree, size_t max_depth)
 	bool success = tree.getLeafAt(halfway, &root_leaf_ptr);
 	if (!success) return false;
 	root_leaf_ptr->points = source.vertices;
+
+	root_leaf_ptr->vertices = source.vertices;
+	root_leaf_ptr->normals = source.normals;
+	root_leaf_ptr->indices = source.indices;
 	
 	size_t maxPointsPerLeaf = 4;
 	
@@ -425,6 +430,117 @@ bool saveToFile(std::string file_name, Mesh_Object_t& object)
 	fout.write((char*)serializable_mats.data(), materials_size * sizeof(serializable_material));
 	fout.close();
 
+	return true;
+}
+
+bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_iteration)
+{
+	if (object.indices.size() % 3 != 0) return false;
+
+	bool anotherIteration = true;
+
+	size_t count = 0;
+	int iteration_count = 0;
+
+	while (anotherIteration && (max_iteration == -1 || iteration_count < max_iteration)) {
+		iteration_count++;
+		anotherIteration = false;
+		size_t max_iters = object.indices.size();
+		for (size_t i = 0; i < max_iters; i+=3) {
+		//for (size_t i = 0; i < object.indices.size(); i += 3) {
+			glm::vec3 v1 = glm::make_vec3(object.vertices.data() + 3 * object.indices[i]);
+			glm::vec3 v2 = glm::make_vec3(object.vertices.data() + 3 * object.indices[i + 1]);
+			glm::vec3 v3 = glm::make_vec3(object.vertices.data() + 3 * object.indices[i + 2]);
+			
+			float l12 = glm::length(v1 - v2);
+			float l23 = glm::length(v2 - v3);
+			float l31 = glm::length(v3 - v1);
+
+			float max_length = glm::max(l12, glm::max(l23, l31));
+
+			if (max_length > max_edge_length) {
+				count++;
+				anotherIteration = true;
+
+				unsigned int v1_index = object.indices[i];
+				unsigned int v2_index = object.indices[i + 1];
+				unsigned int v3_index = object.indices[i + 2];
+				// Step 1: Create new Vertices
+				glm::vec3 v12 = (v1 + v2) / glm::vec3(2);
+				glm::vec3 v23 = (v2 + v3) / glm::vec3(2);
+				glm::vec3 v31 = (v3 + v1) / glm::vec3(2);
+
+				unsigned int old_vertices_size = object.vertices.size();
+				
+				unsigned int v12_index = (old_vertices_size / 3);
+				unsigned int v23_index = (old_vertices_size / 3) + 1;
+				unsigned int v31_index = (old_vertices_size / 3) + 2;
+
+				object.vertices.push_back(v12.x);
+				object.vertices.push_back(v12.y);
+				object.vertices.push_back(v12.z);
+
+				object.vertices.push_back(v23.x);
+				object.vertices.push_back(v23.y);
+				object.vertices.push_back(v23.z);
+
+				object.vertices.push_back(v31.x);
+				object.vertices.push_back(v31.y);
+				object.vertices.push_back(v31.z);
+
+				// Step 3: Copy over other properties from vertices:
+				//		-> Normals, colors, etc.
+
+				object.tex_coords.push_back(object.tex_coords[2 * v1_index]);
+				object.tex_coords.push_back(object.tex_coords[2 * v1_index + 1]);
+
+				object.tex_coords.push_back(object.tex_coords[2 * v2_index]);
+				object.tex_coords.push_back(object.tex_coords[2 * v2_index + 1]);
+
+				object.tex_coords.push_back(object.tex_coords[2 * v3_index]);
+				object.tex_coords.push_back(object.tex_coords[2 * v3_index + 1]);
+
+				object.normals.push_back(object.normals[3 * v1_index]);
+				object.normals.push_back(object.normals[3 * v1_index + 1]);
+				object.normals.push_back(object.normals[3 * v1_index + 2]);
+
+				object.normals.push_back(object.normals[3 * v2_index]);
+				object.normals.push_back(object.normals[3 * v2_index + 1]);
+				object.normals.push_back(object.normals[3 * v2_index + 2]);
+
+				object.normals.push_back(object.normals[3 * v3_index]);
+				object.normals.push_back(object.normals[3 * v3_index + 1]);
+				object.normals.push_back(object.normals[3 * v3_index + 2]);
+
+				// Also do Colors ? -> No, may not even be defined
+
+				object.face_material_indices.push_back(object.face_material_indices[v1_index]);
+				object.face_material_indices.push_back(object.face_material_indices[v2_index]);
+				object.face_material_indices.push_back(object.face_material_indices[v3_index]);
+
+				// Step 3: Update current indices and add new indices
+
+				// First triangle: update current indices
+				object.indices[i + 1] = v12_index;
+				object.indices[i + 2] = v31_index;
+
+				// Second triangle: v12, v23, v31
+				object.indices.push_back(v12_index);
+				object.indices.push_back(v23_index);
+				object.indices.push_back(v31_index);
+
+				// Third triangle: v12, v2, v23
+				object.indices.push_back(v12_index);
+				object.indices.push_back(v2_index);
+				object.indices.push_back(v23_index);
+
+				// Fourth Triangle: v23, v3, v31
+				object.indices.push_back(v23_index);
+				object.indices.push_back(v3_index);
+				object.indices.push_back(v31_index);
+			}
+		}
+	}
 	return true;
 }
 

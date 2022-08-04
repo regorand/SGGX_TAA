@@ -25,9 +25,14 @@ Shader::~Shader()
 	glDeleteProgram(m_GlId);
 }
 
-unsigned int Shader::getUniformLocation(const std::string& name)
+unsigned int Shader::getUniformLocation(const std::string name)
 {
-	return glGetUniformLocation(m_GlId, name.c_str());
+	if (name == "camera_pos") {
+		int x = 0;
+	}
+	auto name_c_str = name.c_str();
+	unsigned int res = glGetUniformLocation(m_GlId, name_c_str);
+	return res;
 }
 
 void Shader::printUniformNotFound(std::string name)

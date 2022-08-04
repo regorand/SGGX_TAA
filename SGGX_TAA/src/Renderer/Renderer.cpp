@@ -6,7 +6,7 @@ Renderer::Renderer()
 	projectionMatrix = glm::mat4(1);
 }
 
-void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<std::shared_ptr<Light>> &lights)
+void Renderer::render(RasterizationObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights)
 {
 	glm::mat4 MVP = projectionMatrix * camera.getViewMatrix() * object->getLocalTransform();
 
@@ -16,11 +16,11 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 	object->getShader()->setUniformMat4f("Model_Matrix", object->getLocalTransform());
 	object->getShader()->setUniformMat4f("MVP_matrix", MVP);
 
-	object->getShader()->setUniform1i("output_type", parameters.active_shader_output_index);
+	object->getShader()->setUniform1i("output_type", parameters.current_shader_output_index);
 
 	auto materials = object->getMaterials();
 
-	
+
 
 	//glm::vec3 lightDirection = glm::vec3(glm::cos(parameters.light_direction[0]) * glm::cos(parameters.light_direction[1]), 
 	//	glm::sin(parameters.light_direction[1]), 
@@ -28,10 +28,10 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 
 	glm::vec3 lightDirection = glm::vec3(1, 0, 0);
 	object->getShader()->setUniform3f("light_direction", lightDirection);
-	
+
 	std::vector<glm::vec3> lights_pos;
 	std::vector<glm::vec3> lights_intensities;
-	for (auto &light : lights) {
+	for (auto& light : lights) {
 		lights_pos.push_back(light->getPosition());
 		lights_intensities.push_back(light->getLightColor());
 	}
@@ -40,7 +40,7 @@ void Renderer::render(RasterizationObject *object, Camera &camera, std::vector<s
 	object->getShader()->setUniform3fv("lights_intensities", lights.size(), lights_intensities.data());
 
 	if (object->getTextures().size() != 0) {
-		
+
 	}
 	std::vector<std::shared_ptr<Texture>> textures = object->getTextures();
 	unsigned int num_textures = glm::min(textures.size(), MAX_TEXTURES);
@@ -78,7 +78,7 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	voxels.bindBuffers();
 	shader->bind();
 
-	shader->setUniform1i("output_type", parameters.active_shader_output_index);
+	shader->setUniform1i("output_type", parameters.current_shader_output_index);
 
 	glm::mat4 transformation_matrix = camera.getViewMatrix();
 
@@ -89,7 +89,7 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 	shader->setUniform3f("lower", voxels.getLower());
 	shader->setUniform3f("higher", voxels.getHigher());
 	shader->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
-	
+
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	voxels.unbindBuffers();
@@ -113,6 +113,9 @@ void Renderer::renderOctreeVisualization(RasterizationObject* object, Camera& ca
 	object->getShader()->setUniformMat4f("Model_Matrix", object->getLocalTransform());
 	object->getShader()->setUniformMat4f("MVP_matrix", MVP);
 
+	object->getShader()->setUniform1i("output_type", parameters.current_shader_output_index);
+
+
 	glDrawElements(GL_LINES, object->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
 
 	object->getShader()->unbind();
@@ -127,18 +130,33 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 	auto shader = object->getOctreeShader();
 	shader->bind();
 
-	octree.bindBuffers();	
+	bool bound = octree.bindBuffers();
+	if (bound) {
+		glm::mat4 transformation_matrix = camera.getViewMatrix();
+		shader->setUniform3f("camera_pos", camera.getPosition());
 
-	glm::mat4 transformation_matrix = camera.getViewMatrix();
-	shader->setUniform3f("camera_pos", camera.getPosition());
-	
-	shader->setUniform3f("lower", octree.getTreeLower());
-	shader->setUniform3f("higher", octree.getTreeHigher());
-	
-	shader->setUniform1i("output_type", parameters.active_shader_output_index);
-	shader->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
+		shader->setUniform3f("lower", octree.getTreeLower());
+		shader->setUniform3f("higher", octree.getTreeHigher());
 
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
+
+		shader->setUniform1i("max_tree_depth", octree.getMaxDepth());
+
+		shader->setUniform1i("min_render_depth", octree_params.min_render_depth);
+		shader->setUniform1i("max_render_depth", octree_params.max_render_depth);
+
+		shader->setUniform1i("roentgen_denom", octree_params.roentgen_denominator);
+
+		shader->setUniform1i("output_type", parameters.current_shader_output_index);
+		shader->setUniform1f("AABBOutlineFactor", parameters.renderVoxelsAABB ? 1.0f : 0.0f);
+
+		shader->setUniform1i("nodes_size", octree.getNodesSize());
+		shader->setUniform1i("inner_nodes_size", octree.getInnerSize());
+		shader->setUniform1i("leaves_size", octree.getLeavesSize());
+
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	}
 
 	octree.unbindBuffers();
 	object->getVertexArray()->unbind();

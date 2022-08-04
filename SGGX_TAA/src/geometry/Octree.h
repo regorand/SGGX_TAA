@@ -33,12 +33,17 @@ typedef struct inner_node_s {
 
 typedef struct {
 	// TODO: this should become triangle centers, and probably a struct including more data (normals, color, etc.)
+	std::vector<float> vertices;
+	std::vector<float> normals;
+	std::vector<unsigned int> indices;
+
 	std::vector<float> points;
 } obj_leaf_node;
 
 typedef struct {
 	// current shader implementation means this will have to be padded to mod 4 bytes, once we use it
 	float density;
+	float normal[3];
 } sggx_leaf_node;
 
 /*
@@ -103,6 +108,12 @@ public:
 	size_t getInnerNodesOffset();
 	size_t getLeavesOffset();
 
+	size_t getNodesSize();
+	size_t getInnerSize();
+	size_t getLeavesSize();
+
+	size_t getMaxDepth();
+
 	bool build(size_t max_depth, size_t maxPointsPerLeaf);
 	bool createSGGX();
 
@@ -117,7 +128,7 @@ public:
 		size_t depth, 
 		size_t max_depth);
 
-	bool convertNode(uint32_t node_index, sggx_leaf_node *value);
+	bool convertNode(uint32_t node_index, sggx_leaf_node *value, size_t current_depth);
 
 	glm::vec3 getTreeLower();
 	glm::vec3 getTreeHigher();
