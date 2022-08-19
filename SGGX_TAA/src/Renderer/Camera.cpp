@@ -70,3 +70,21 @@ void Camera::update()
 	position = glm::vec3(0, 0, -(camera_params.camera_dist * camera_params.camera_dist));
 	viewDirection = glm::vec3(0, 0, -1);
 }
+
+void Camera::getScreenCoveringQuadData(std::vector<glm::vec3>& vertices, float* width, float* height)
+{
+	float y_dist = glm::tan(camera_params.fov / 2);
+	float x_dist = y_dist * ((float)parameters.windowWidth) / parameters.windowHeight;
+
+	viewDirection = glm::normalize(viewDirection);
+	glm::vec3 h = position + viewDirection;
+	glm::vec3 tangent = glm::cross(viewDirection, up);
+
+	vertices.push_back(h - y_dist * up - x_dist * tangent);
+	vertices.push_back(h - y_dist * up + x_dist * tangent);
+	vertices.push_back(h + y_dist * up - x_dist * tangent);
+	vertices.push_back(h + y_dist * up + x_dist * tangent);
+
+	*width = 2 * x_dist;
+	*height = 2 * y_dist;
+}

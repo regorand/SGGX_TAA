@@ -2,7 +2,6 @@
 
 struct octree_node_s {
 	uint type_and_index; 
-	uint parent_index;
     uint leaf_data_index;
 };
 
@@ -12,9 +11,18 @@ struct inner_node_s {
 
 struct leaf_node_s {
 	float value;
+
     float normal_x;
     float normal_y;
     float normal_z;
+
+    float sigma_x;
+	float sigma_y;
+	float sigma_z;
+    
+	float r_xy;
+	float r_xz;
+	float r_yz;
 };
 
 #define NODE_TYPE(a) ((a & 0x80000000) != 0 ? 1 : 0)
@@ -38,8 +46,9 @@ layout(std430, binding = 3) buffer octree_leaf_nodes
     leaf_node_s leaves_data[];
 };
 
-uniform int inner_nodes_offset;
-uniform int leaves_offset;
+in vec4 world_pos;
+
+out vec4 out_color;
 
 uniform int nodes_size;
 uniform int inner_nodes_size;
@@ -57,6 +66,11 @@ uniform int roentgen_denom;
 uniform int output_type;
 uniform float AABBOutlineFactor;
 
+uniform float horizontal_pixel_size;
+uniform float vertical_pixel_size;
+
+
+uniform int num_iterations;
 
 uniform vec3 lower;
 uniform vec3 higher;
@@ -64,6 +78,7 @@ uniform vec3 higher;
 
 uniform vec3 camera_pos;
 
+const vec3 light_dir = vec3(-1, 1, 0);
 
 float step_0(float a) {
     return max(sign(a), 0);
@@ -321,133 +336,300 @@ bool traverseUpToParent(vec3 position,
     return true;
 }
 
-in vec4 world_pos;
+mat3 buildSGGXMatrix(leaf_node_s leaf) {
+    float Sxx = leaf.sigma_x * leaf.sigma_x;
+	float Syy = leaf.sigma_y * leaf.sigma_y;
+	float Szz = leaf.sigma_z * leaf.sigma_z;
+	
+	float Sxy = leaf.r_xy * leaf.sigma_x * leaf.sigma_y;
+	float Sxz = leaf.r_xz * leaf.sigma_x * leaf.sigma_z;
+	float Syz = leaf.r_yz * leaf.sigma_y * leaf.sigma_z;
 
-out vec4 out_color;
+	return mat3(Sxx, Sxy, Sxz, Sxy, Syy, Syz, Sxz, Syz, Szz);
+}
+
+void getSGGXFactors(leaf_node_s leaf, inout float Sxx, inout float Syy, inout float Szz, inout float Sxy, inout float Sxz, inout float Syz) {
+    Sxx = leaf.sigma_x * leaf.sigma_x;
+	Syy = leaf.sigma_y * leaf.sigma_y;
+	Szz = leaf.sigma_z * leaf.sigma_z;
+
+	Sxy = leaf.r_xy * leaf.sigma_x * leaf.sigma_y;
+	Sxz = leaf.r_xz * leaf.sigma_x * leaf.sigma_z;
+	Syz = leaf.r_yz * leaf.sigma_y * leaf.sigma_z;
+}
+
+
+vec4 doSGGX() {
+    return vec4(1);
+}
+
+float clamped_dot(vec3 v1, vec3 v2) {
+    return max(dot(v1, v2), 0);
+}
+
+void buildOrthonormalBasis(inout vec3 omega_1, inout vec3 omega_2, const vec3 omega_3)
+{
+    if(omega_3.z < -0.9999999f)
+    {
+        omega_1 = vec3 ( 0.0f , -1.0f , 0.0f );
+        omega_2 = vec3 ( -1.0f , 0.0f , 0.0f );
+    } else {
+        const float a = 1.0f /(1.0f + omega_3.z );
+        const float b = -omega_3.x*omega_3 .y*a ;
+        omega_1 = vec3 (1.0f - omega_3.x*omega_3. x*a , b , -omega_3.x );
+        omega_2 = vec3 (b , 1.0f - omega_3.y*omega_3.y*a , -omega_3.y );
+    }
+}
+
+const float PI = 3.14159;
+
+vec3 sample_VNDF(const vec3 wi,
+const float S_xx, const float S_yy, const float S_zz,
+const float S_xy, const float S_xz, const float S_yz,
+const float U1, const float U2)
+{
+    // generate sample (u, v, w)
+    const float r = sqrt(U1);
+    const float phi = 2.0f*PI*U2;
+    const float u = r*cos(phi);
+    const float v= r*sin(phi);
+    const float w = sqrt(1.0f - u*u - v*v);
+
+    // build orthonormal basis
+    vec3 wk, wj;
+    buildOrthonormalBasis(wk, wj, wi);
+
+    // project S in this basis
+    const float S_kk = wk.x*wk.x*S_xx + wk.y*wk.y*S_yy + wk.z*wk.z*S_zz
+    + 2.0f * (wk.x*wk.y*S_xy + wk.x*wk.z*S_xz + wk.y*wk.z*S_yz);
+    const float S_jj = wj.x*wj.x*S_xx + wj.y*wj.y*S_yy + wj.z*wj.z*S_zz
+    + 2.0f * (wj.x*wj.y*S_xy + wj.x*wj.z*S_xz + wj.y*wj.z*S_yz);
+    const float S_ii = wi.x*wi.x*S_xx + wi.y*wi.y*S_yy + wi.z*wi.z*S_zz
+    + 2.0f * (wi.x*wi.y*S_xy + wi.x*wi.z*S_xz + wi.y*wi.z*S_yz);
+    const float S_kj = wk.x*wj.x*S_xx + wk.y*wj.y*S_yy + wk.z*wj.z*S_zz
+    + (wk.x*wj.y + wk.y*wj.x)*S_xy
+    + (wk.x*wj.z + wk.z*wj.x)*S_xz
+    + (wk.y*wj.z + wk.z*wj.y)*S_yz;
+    const float S_ki = wk.x*wi.x*S_xx + wk.y*wi.y*S_yy + wk.z*wi.z*S_zz
+    + (wk.x*wi.y + wk.y*wi.x)*S_xy + (wk.x*wi.z + wk.z*wi.x)*S_xz + (wk.y*wi.z + wk.z*wi.y)*S_yz;
+    const float S_ji = wj.x*wi.x*S_xx + wj.y*wi.y*S_yy + wj.z*wi.z*S_zz
+    + (wj.x*wi.y + wj.y*wi.x)*S_xy
+    + (wj.x*wi.z + wj.z*wi.x)*S_xz
+    + (wj.y*wi.z + wj.z*wi.y)*S_yz;
+
+    // compute normal
+    float sqrtDetSkji = sqrt(abs(S_kk*S_jj*S_ii - S_kj*S_kj*S_ii - S_ki*S_ki*S_jj - S_ji*S_ji*S_kk + 2.0f*S_kj*S_ki*S_ji));
+    float inv_sqrtS_ii = 1.0f / sqrt(S_ii);
+    float tmp = sqrt(S_jj*S_ii-S_ji*S_ji);
+    vec3 Mk = vec3(sqrtDetSkji / tmp, 0.0, 0.0);
+    vec3 Mj = vec3(-inv_sqrtS_ii*(S_ki*S_ji-S_kj*S_ii)/tmp , inv_sqrtS_ii*tmp, 0);
+    vec3 Mi = vec3(inv_sqrtS_ii*S_ki, inv_sqrtS_ii*S_ji, inv_sqrtS_ii*S_ii);
+    vec3 wm_kji = normalize(u*Mk+v*Mj+w*Mi);
+
+    // rotate back to world basis
+    return wm_kji.x * wk + wm_kji.y * wj + wm_kji.z * wi;
+}
+
+vec3 sample_direction(int n, vec3 normal) {
+    return normal;
+}
+
+vec3 evaluateSggx(leaf_node_s leaf, vec3 ray_dir, vec3 normal /*wont need normal here later*/) {
+
+    vec3 wi = light_dir;
+    vec3 wo = ray_dir;
+
+    float S_xx = 0;
+	float S_yy = 0;
+	float S_zz = 0;
+
+	float S_xy = 0;
+	float S_xz = 0;
+	float S_yz = 0;
+
+
+    getSGGXFactors(leaf, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz);
+
+    float running_factor = 0;
+
+    //int num_iterations = 128;
+
+    for (int i = 0; i < num_iterations; i++) {
+        float U1 = rand(gl_FragCoord.xy + i * world_pos.xy + 31 * min_render_depth * world_pos.yz + 33 * max_render_depth * world_pos.xz);
+        float U2 = rand(gl_FragCoord.yz + U1 * world_pos.xy + 37 * min_render_depth * world_pos.yz + 41 * max_render_depth * world_pos.xz);
+
+        const vec3 wm = sample_VNDF(wi, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz, U1, U2);
+
+        running_factor += (1.0f / PI) * max(0, dot(wo, wm));
+    }
+
+    running_factor /= num_iterations;
+
+    return vec3(1) * running_factor;
+
+    /*
+    int num_point_samples = 1;
+    vec3 out_dir = - ray_dir;
+
+    float sum = 0;
+    for (int i = 0; i < num_point_samples; i++) {
+        sum += clamped_dot(sample_direction(1, normal), out_dir);
+    }
+    sum /= PI * num_point_samples;
+
+    //mat3 sggx_matrix = buildSGGXMatrix(leaf);
+    return sum * vec3(1);
+    */
+}
 
 void main() {
     out_color = vec4(0);
 
     AABB octreeBound = AABB(lower, higher);
-    
+    int max_depth = max_render_depth;
+
     vec3 ray_base = camera_pos;
-    vec3 ray_dir = normalize(world_pos.xyz - camera_pos);
+    vec3 view_direction = normalize(world_pos.xyz - camera_pos);
 
-    Ray pixel_ray = Ray(ray_base, ray_dir);
-    Intersection outline_intersection = getBoxIntersection(pixel_ray, octreeBound);
+    float eps = 1e-4;
+    vec3 ray_eps = view_direction * eps;
 
-    float factor = step_0(outline_intersection.t_far - outline_intersection.t_near);
-    if (factor == 0) {
+    Ray pixel_ray = Ray(ray_base, view_direction);
+
+    Intersection base_intersection = getBoxIntersection(pixel_ray, octreeBound);
+
+    float base_factor = step_0(base_intersection.t_far - base_intersection.t_near);    
+    if (base_factor == 0) {
         discard;
     }
 
-    // TODO do LOD calculations here
-    int max_depth = max_render_depth;
     if (auto_lod == 1) {
         //float leaf_size = (upper.x - lower.x) / pow(2, max_tree_depth);
-
-        int dist_factor = int(outline_intersection.t_far / 25);
-
+        int dist_factor = int(base_intersection.t_far / 25);
         max_depth -= dist_factor;
         max_depth = max(min_render_depth + 1, max_depth);
     }
-
-    float eps = 1e-4;
-    vec3 ray_eps = ray_dir * eps;
-    vec3 position = ray_base + outline_intersection.t_near * ray_dir + ray_eps;
+    vec3 position = ray_base + base_intersection.t_near * view_direction + ray_eps;
 
     vec3 outline_color = (position - lower) / (higher - lower);
 
-    uint parent_buf[max_stack_size];
-    Stack parent_stack = Stack(parent_buf, 0);
-
-    AABB aabb_stack_buf[max_stack_size];
-    AABBStack aabb_stack = AABBStack(aabb_stack_buf, 0);
-
-    AABB running_aabb = AABB(octreeBound.lower, octreeBound.upper);
-
-    uint node_index = 0;
-    uint current_depth = 0;
-
-    // Any outs here mean we don't fully traverse the Octree
-    if (output_type == 2) {
-        bool result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
-
-        if (!result) return;
-
-        Intersection leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
-        out_color = (leaf_intersection.t_far - leaf_intersection.t_near) / 2 * vec4(1);
-        return;
-    }
-
-    // From here: Full Octree traversal
-
-    // Find Leaf at Position
-    bool result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
-    Intersection leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
-
-    float count = 0;
-    float roentgen_count = 0;
-    
     vec3 sggx_sum_color = vec3(0);
     vec3 sggx_color = vec3(1);
-    float remaining_contribution = 1.0;
 
+    float roentgen_count = 0;
 
-    while (result && count < 200) {
-        // Render Leaf
-        count++;
-        roentgen_count += step_0(float(current_depth) - min_render_depth);
+    int pixel_samples = 1;
 
-        uint leaf_index = nodes_data[node_index].leaf_data_index;
-        if (leaf_index < leaves_size) {
-            leaf_node_s leaf = leaves_data[leaf_index];
-            vec3 normal = vec3(leaf.normal_x, leaf.normal_y, leaf.normal_z);
+    for (int i = 0; i < pixel_samples; i++) {
+        float U1 = rand(gl_FragCoord.xy + i * world_pos.xy + 43 * min_render_depth * world_pos.yz + 47 * max_render_depth * world_pos.xz);
+        float U2 = rand(gl_FragCoord.yz + U1 * world_pos.xy + 53 * min_render_depth * world_pos.yz + 57 * max_render_depth * world_pos.xz);
 
-            float brightness_factor = 3;
-            float density_base = leaf.value;
-            float length_base = 2 * (running_aabb.upper.x - running_aabb.lower.x);
-            float Intersection_length = leaf_intersection.t_far - leaf_intersection.t_near;
-            float length_factor = min(Intersection_length / length_base, 1);
+        float upFactor = U1 - 0.5;
+        float tangentFactor = U2 - 0.5;
 
-            float ambient_factor = 0.2;
+        vec3 up = vec3(0, 1, 0);
+        vec3 tangent = cross(view_direction, up);
 
-            vec3 light_dir = vec3(1, 1, 0);
-            float light_normal_dot = max(dot(light_dir, normal), 0);
-            float diffuse_factor = (1 - ambient_factor) * light_normal_dot;
+        vec3 ray_target = world_pos.xyz + up * upFactor * vertical_pixel_size + tangent * tangentFactor * horizontal_pixel_size;
 
-            float max_depth_factor = pow(2, max(max_tree_depth - max_depth, 0));
+        vec3 ray_base = camera_pos;
+        vec3 ray_dir = normalize(ray_target - camera_pos);
 
-            float factor = brightness_factor * length_factor * density_base * max_depth_factor;
+        Ray pixel_ray = Ray(ray_base, ray_dir);
 
+        Intersection outline_intersection = getBoxIntersection(pixel_ray, octreeBound);
 
-            sggx_sum_color += (ambient_factor + diffuse_factor) * remaining_contribution * factor * sggx_color;
-            remaining_contribution *= (1 - factor);
-
-            //float rand_val = rand(position.xy);
-            if (output_type == 0 && remaining_contribution < 0.01) break;
+        float factor = step_0(outline_intersection.t_far - outline_intersection.t_near);
+        if (factor == 0) {
+            continue;
         }
 
-
-        // Get new Position
-        position = ray_base + leaf_intersection.t_far * ray_dir + ray_eps;
-
-        // Get smallest common parent of current leaf and leaf in which the new position is located
-        result = traverseUpToParent(position, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+        // TODO do LOD calculations here
         
 
-        if (!result) break;
-            
-        // get Next Leaf
-        result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+        float eps = 1e-4;
+        vec3 ray_eps = ray_dir * eps;
+        vec3 position = ray_base + outline_intersection.t_near * ray_dir + ray_eps;
 
-        if (!result) break;
-        // Find leaf Intersection
-        leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
+        vec3 outline_color = (position - lower) / (higher - lower);
+
+        uint parent_buf[max_stack_size];
+        Stack parent_stack = Stack(parent_buf, 0);
+
+        AABB aabb_stack_buf[max_stack_size];
+        AABBStack aabb_stack = AABBStack(aabb_stack_buf, 0);
+
+        AABB running_aabb = AABB(octreeBound.lower, octreeBound.upper);
+
+        uint node_index = 0;
+        uint current_depth = 0;
+
+        // Find Leaf at Position
+        bool result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+        Intersection leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
+
+        float count = 0;
+        float roentgen_count = 0;
+
+        float remaining_contribution = 1.0;
+
+        while (result && count < 200) {
+            // Render Leaf
+            count++;
+            roentgen_count += step_0(float(current_depth) - min_render_depth);
+            
+
+            uint leaf_index = nodes_data[node_index].leaf_data_index;
+            if (leaf_index < leaves_size) {
+                leaf_node_s leaf = leaves_data[leaf_index];
+                vec3 normal = vec3(leaf.normal_x, leaf.normal_y, leaf.normal_z);
+
+                if (output_type == 0 && abs(leaf.value) > 1e-3) {
+                    vec3 color = evaluateSggx(leaf, ray_dir, normal);
+                    color *= 0.9;
+                    color += 0.1 * vec3(1); 
+
+                    //float length_base = length(running_aabb.upper - running_aabb.lower);
+                    float length_base = abs(running_aabb.upper.x - running_aabb.lower.x);
+                    float Intersection_length = leaf_intersection.t_far - leaf_intersection.t_near;
+
+                    float length_factor = min(Intersection_length / length_base, 1);
+
+                    // sggx_sum_color += remaining_contribution * length_factor * color;
+                    sggx_sum_color += color;
+
+                    // remaining_contribution *= (1 - length_factor);
+
+                    //if (remaining_contribution < 0.01) break;
+
+                    break;
+                }
+            }
+
+
+            // Get new Position
+            position = ray_base + leaf_intersection.t_far * ray_dir + ray_eps;
+
+            // Get smallest common parent of current leaf and leaf in which the new position is located
+            result = traverseUpToParent(position, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+
+
+            if (!result) break;
+
+            // get Next Leaf
+            result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+
+            if (!result) break;
+            // Find leaf Intersection
+            leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
+        }
     }
+
+    
 
     // Calculate output Color after traversal 
     if (output_type == 0) {
+        sggx_sum_color /= pixel_samples;
         out_color = vec4(sggx_sum_color, 1);
     } else if (output_type == 1) {
         //out_color = vec4(float(count) / 50 * vec3(1, 0, 0.5), 1);

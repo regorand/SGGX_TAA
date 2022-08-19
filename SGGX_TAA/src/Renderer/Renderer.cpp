@@ -138,7 +138,24 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform3f("lower", octree.getTreeLower());
 		shader->setUniform3f("higher", octree.getTreeHigher());
 
+
+		GLint data[4];
+		glGetIntegerv(GL_VIEWPORT, data);
+		int horizontal_pixels = data[2];
+		int vertical_pixels = data[3];
+
+		float horizontal_size;
+		float vertical_size;
+		object->getSizes(&horizontal_size, &vertical_size);
+		float horizontal_pixel_size = horizontal_size / horizontal_pixels;
+		float vertical_pixel_size = vertical_size / vertical_pixels;
+
+		shader->setUniform1f("horizontal_pixel_size", horizontal_pixel_size);
+		shader->setUniform1f("vertical_pixel_size", vertical_pixel_size);
+
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
+
+		shader->setUniform1i("num_iterations", octree_params.num_iterations);
 
 		shader->setUniform1i("max_tree_depth", octree.getMaxDepth());
 

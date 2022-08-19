@@ -29,6 +29,7 @@ public:
 	void setUpVector(glm::vec3 upVector);
 
 	std::vector<glm::vec3> getScreenCoveringQuad();
+	void getScreenCoveringQuadData(std::vector<glm::vec3>& vertices, float* width, float* height);
 
 	void update();
 };

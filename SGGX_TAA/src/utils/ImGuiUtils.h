@@ -140,7 +140,7 @@ void doImGui(SceneController& controller) {
 	if (parameters.current_render_type_index == OCTREE_VIS_RENDER_INDEX)
 	{
 		ImGui::Begin("Octree Visualization Controls");
-		ImGui::SliderInt("Max Tree Depth", &parameters.max_tree_depth, 0, 16);
+		ImGui::SliderInt("Max Tree Depth", &octree_params.max_tree_depth, 0, 16);
 
 		ImGui::SliderInt("Min Visualization Depth", &parameters.min_visualization_depth, 0, parameters.max_visualization_depth - 1);
 		ImGui::SliderInt("Max Visualization Depth", &parameters.max_visualization_depth, parameters.min_visualization_depth + 1, 16);
@@ -151,11 +151,16 @@ void doImGui(SceneController& controller) {
 	}
 	else if (parameters.current_render_type_index == OCTREE_RENDER_INDEX) {
 		ImGui::Begin("Octree Controls");
+		ImGui::SliderInt("Max Tree Depth", &octree_params.max_tree_depth, 0, 16);
+
 		ImGui::SliderInt("Min Render Depth", &octree_params.min_render_depth, 0, octree_params.max_render_depth - 1);
 		ImGui::SliderInt("Max Render Depth", &octree_params.max_render_depth, octree_params.min_render_depth + 1, 16);
 
+		ImGui::SliderInt("Number Iterations", &octree_params.num_iterations, 1, 128);
+
 		ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
 		ImGui::Checkbox("Auto LOD", &octree_params.auto_lod);
+		ImGui::Checkbox("New Tree Building", &octree_params.new_building);
 
 		ImGui::End();
 	}

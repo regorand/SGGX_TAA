@@ -76,10 +76,11 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	glm::vec3 diff = mesh.higher - mesh.lower;
 	float max_dimension = glm::max(diff.x, glm::max(diff.y, diff.z));
 
-	float max_edge_length = max_dimension / (glm::pow(2, parameters.max_tree_depth));
-	max_edge_length = 0.1f;
+	float max_edge_length = max_dimension / (glm::pow(2, octree_params.max_tree_depth));
+	max_edge_length = 0.05f;
 
-	bool tesselation_res = tesselateTriforce(mesh, max_edge_length, -1);
+	
+		//bool tesselation_res = tesselateTriforce(mesh, max_edge_length, -1);
 
 	if (!res) {
 		std::cout << "Failed to load obj file: " << dir + filename << std::endl;
@@ -95,15 +96,25 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	else {
 		std::cout << "Failed to load voxels for obj file: " << dir + filename << std::endl;
 	}
-
+	bool octree_res = false;
 	std::shared_ptr<Octree> octree = std::make_shared<Octree>();
-	bool octree_res = build_Obj_Octree(mesh, *octree, parameters.max_tree_depth);
+	std::shared_ptr<Octree> octree2 = std::make_shared<Octree>();
+	if (!octree_params.new_building) {
+		octree_res = build_Obj_Octree(mesh, *octree, octree_params.max_tree_depth);
+		octree_res = octree2->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
+		
+		if (octree_res) {
+			octree->createSGGX();
+		}
+	}
+	else {
+		octree_res = octree->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
+	}
+	
 	if (!octree_res) {
 		std::cout << "Error, failing at attempting to build octree" << std::endl;
 	}
 	else {
-		octree->createSGGX();
-
 		scene_object->registerOctree(octree);
 	}
 
@@ -214,9 +225,11 @@ bool Loader::initVoxels(Mesh_Object_t& obj, unsigned int dimension, std::shared_
 	*/
 	unsigned int count = 0;
 	for (uint32_t idx = 0; idx < obj.indices.size(); idx += 3) {
+		/*
 		if (idx % 3000 == 0) {
 			std::cout << "voxelizing triangle #" << idx / 3 << std::endl;
 		}
+		*/
 		glm::vec3 v1 = glm::vec3(obj.vertices[3 * obj.indices[idx]], obj.vertices[3 * obj.indices[idx] + 1], obj.vertices[3 * obj.indices[idx] + 2]);
 		glm::vec3 v2 = glm::vec3(obj.vertices[3 * obj.indices[idx + 1]], obj.vertices[3 * obj.indices[idx + 1] + 1], obj.vertices[3 * obj.indices[idx + 1] + 2]);
 		glm::vec3 v3 = glm::vec3(obj.vertices[3 * obj.indices[idx + 2]], obj.vertices[3 * obj.indices[idx + 2] + 1], obj.vertices[3 * obj.indices[idx + 2] + 2]);

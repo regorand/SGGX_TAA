@@ -62,3 +62,15 @@ bool RayMarchObject::hasValidOctreeShader()
 {
 	return octree_shader != nullptr && octree_shader->isValid();
 }
+
+void RayMarchObject::setSizes(float horizontal_size, float vertical_size)
+{
+	m_horizontal_size = horizontal_size;
+	m_vertical_size = vertical_size;
+}
+
+void RayMarchObject::getSizes(float* horizontal_size, float* vertical_size)
+{
+	*horizontal_size = m_horizontal_size;
+	*vertical_size = m_vertical_size;
+}

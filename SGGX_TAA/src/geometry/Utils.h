@@ -20,6 +20,17 @@
 
 const uint32_t OBJ_FILE_FORMAT_VERSION = 4;
 
+typedef struct {
+	glm::vec3 center;
+	glm::vec3 extents;
+} AABB;
+
+typedef struct {
+	glm::vec3 v0;
+	glm::vec3 v1;
+	glm::vec3 v2;
+} Triangle;
+
 void make_flat_shaded(std::vector<float>& vertices,
 	std::vector<float>& normals,
 	std::vector<float>& colors,
@@ -45,3 +56,27 @@ bool readObjectFromFile(std::string file_name, Mesh_Object_t& target);
 bool saveToFile(std::string file_name, Mesh_Object_t &object);
 
 bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_iteration);
+
+
+/*
+ * implements triangle box intersection test
+ * based on https://gdbooks.gitbooks.io/3dcollisions/content/Chapter4/aabb-triangle.html
+ */
+bool triangleBoxIntersection(AABB box, Triangle tri);
+
+/*
+ * projects the box and the triangle onto the given axis and returns if they overlap
+ */
+bool axisIntersection(AABB box, Triangle tri, glm::vec3 axis);
+
+template<typename T>
+inline T max3(T value1, T value2, T value3)
+{
+	return glm::max(value1, glm::max(value2, value3));
+}
+
+template<typename T>
+inline T min3(T value1, T value2, T value3)
+{
+	return glm::min(value1, glm::min(value2, value3));
+}

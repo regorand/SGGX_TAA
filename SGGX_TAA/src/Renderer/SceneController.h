@@ -51,6 +51,8 @@ public:
 
 private:
 
+	bool updateRayMarchQuad();
+
 	bool switchRenderedObject(std::string path);
 	bool removeSceneObject(std::string path, bool evenIfActive = false);
 };

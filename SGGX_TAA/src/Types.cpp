@@ -12,7 +12,7 @@ void initTypes()
 	std::vector<std::string> octree_vis_shader_outputs({ "White", "Bright leafs", "Bright Root", "Custom" });
 	render_types.push_back({ "Octree Visualization" , octree_vis_shader_outputs });
 
-	std::vector<std::string> octree_shader_outputs({ "SGGX", "Roentgen", "First Leaf Depth", "Custom"});
+	std::vector<std::string> octree_shader_outputs({ "SGGX", "Roentgen", "Custom"});
 	render_types.push_back({ "Octree" , octree_shader_outputs });
 
 	std::transform(render_types.begin(),

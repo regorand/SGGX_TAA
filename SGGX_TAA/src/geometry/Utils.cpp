@@ -166,19 +166,18 @@ bool build_Obj_Octree(Mesh_Object_t& source, Octree &tree, size_t max_depth)
 	tree.init(source.lower, source.higher);
 	
 	// assign root node all data
-	obj_leaf_node *root_leaf_ptr = nullptr;
-	bool success = tree.getLeafAt(halfway, &root_leaf_ptr);
-	if (!success) return false;
-	root_leaf_ptr->points = source.vertices;
-
-	root_leaf_ptr->vertices = source.vertices;
-	root_leaf_ptr->normals = source.normals;
-	root_leaf_ptr->indices = source.indices;
+	//obj_leaf_node *root_leaf_ptr = nullptr;
+	//bool success = tree.getLeafAt(halfway, &root_leaf_ptr);
+	//if (!success) return false;
+	//
+	//root_leaf_ptr->vertices = source.vertices;
+	//root_leaf_ptr->normals = source.normals;
+	//root_leaf_ptr->indices = source.indices;
 	
 	size_t maxPointsPerLeaf = 4;
 	
 	// build tree with given data
-	bool build_success = tree.build(max_depth, maxPointsPerLeaf);
+	bool build_success = tree.build(max_depth, maxPointsPerLeaf, source);
 	if (!build_success) {
 		std::cout << "Error: Build of Octree failed" << std::endl;
 	}
@@ -544,3 +543,82 @@ bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_ite
 	return true;
 }
 
+bool triangleBoxIntersection(AABB box, Triangle tri)
+{
+
+
+	// appearently the plural of "axis" is "axes"
+	std::vector<glm::vec3> axes;
+
+	// normals of the aabb
+	glm::vec3 u0 = glm::vec3(1.0f, 0.0f, 0.0f);
+	glm::vec3 u1 = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 u2 = glm::vec3(0.0f, 0.0f, 1.0f);
+
+	// edge directions of triangle
+	glm::vec3 e0 = glm::normalize(tri.v0 - tri.v1);
+	glm::vec3 e1 = glm::normalize(tri.v1 - tri.v2);
+	glm::vec3 e2 = glm::normalize(tri.v2 - tri.v0);
+
+	// 9 axes are the cross products of triangle edges and aabb normals
+	axes.push_back(glm::cross(e0, u0));
+	axes.push_back(glm::cross(e0, u1));
+	axes.push_back(glm::cross(e0, u2));
+
+	axes.push_back(glm::cross(e1, u0));
+	axes.push_back(glm::cross(e1, u1));
+	axes.push_back(glm::cross(e1, u2));
+
+	axes.push_back(glm::cross(e2, u0));
+	axes.push_back(glm::cross(e2, u1));
+	axes.push_back(glm::cross(e2, u2));
+
+	// aabbs normals are 3 axes to check
+	axes.push_back(u0);
+	axes.push_back(u1);
+	axes.push_back(u2);
+
+	//triangle normal is last 
+	axes.push_back(glm::cross(tri.v0, tri.v1));
+
+	for (auto& axis : axes) {
+		if (!axisIntersection(box, tri, axis)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool axisIntersection(AABB box, Triangle tri, glm::vec3 axis)
+{
+	// Code taken and modified from 
+	// https://gdbooks.gitbooks.io/3dcollisions/content/Chapter4/aabb-triangle.html
+
+	tri.v0 -= box.center;
+	tri.v1 -= box.center;
+	tri.v2 -= box.center;
+
+	glm::vec3 u0 = glm::vec3(1.0f, 0.0f, 0.0f);
+	glm::vec3 u1 = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 u2 = glm::vec3(0.0f, 0.0f, 1.0f);
+
+	float p0 = glm::dot(tri.v0, axis);
+	float p1 = glm::dot(tri.v1, axis);
+	float p2 = glm::dot(tri.v2, axis);
+	// Project the AABB onto the seperating axis
+	// We don't care about the end points of the prjection
+	// just the length of the half-size of the AABB
+	// That is, we're only casting the extents onto the 
+	// seperating axis, not the AABB center. We don't
+	// need to cast the center, because we know that the
+	// aabb is at origin compared to the triangle!
+	float r =	box.extents.x * glm::abs(glm::dot(u0, axis)) +
+				box.extents.y * glm::abs(glm::dot(u1, axis)) +
+				box.extents.z * glm::abs(glm::dot(u2, axis));
+	// Now do the actual test, basically see if either of
+	// the most extreme of the triangle points intersects r
+	// You might need to write Min & Max functions that take 3 arguments
+
+	return glm::max(-max3(p0, p1, p2), min3(p0, p1, p2)) <= r;
+}

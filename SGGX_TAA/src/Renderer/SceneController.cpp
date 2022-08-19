@@ -49,6 +49,12 @@ bool SceneController::init()
 
 void SceneController::doFrame()
 {
+	AABB aabb = { glm::vec3(0, 0, 0), glm::vec3(1, 1, 1) };
+	Triangle tri = { glm::vec3(0.12, 1.32, 0.82), glm::vec3(-1.78, 1.86, 1.46), glm::vec3(-2.23, -0.08, 1.43) };
+
+	bool intersects = triangleBoxIntersection(aabb, tri);
+
+
 	updateModels();
 	updateCamera();
 	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
@@ -67,8 +73,11 @@ void SceneController::doFrame()
 	else if (parameters.current_render_type_index == VOXEL_INDEX_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRenderableVoxels() && rayObj->hasVoxelShader()) {
+			/*
 			std::vector<glm::vec3> vertices = camera.getScreenCoveringQuad();
 			rayObj->getArrayBuffer()->updateData(vertices.data(), vertices.size() * 3 * sizeof(float));
+			*/
+			updateRayMarchQuad();
 			auto voxels = activeObject->getVoxels();
 			renderer.renderVoxels(rayObj.get(), camera, *voxels);
 		}
@@ -84,8 +93,11 @@ void SceneController::doFrame()
 	else if (parameters.current_render_type_index == OCTREE_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRenderableOctree() && rayObj->hasValidOctreeShader()) {
+			/*
 			std::vector<glm::vec3> vertices = camera.getScreenCoveringQuad();
 			rayObj->getArrayBuffer()->updateData(vertices.data(), vertices.size() * 3 * sizeof(float));
+			*/
+			updateRayMarchQuad();
 			auto octree = activeObject->getOctree();
 			renderer.renderOctree(rayObj.get(), camera, *octree);
 		}
@@ -216,6 +228,18 @@ void SceneController::reloadOctreeVis()
 	activeObject->initOctree();
 }
 
+bool SceneController::updateRayMarchQuad()
+{
+	std::vector<glm::vec3> vertices;
+	float width;
+	float height;
+	camera.getScreenCoveringQuadData(vertices, &width, &height);
+
+	rayObj->getArrayBuffer()->updateData(vertices.data(), vertices.size() * 3 * sizeof(float));
+	rayObj->setSizes(width, height);
+	return true;
+}
+
 bool SceneController::switchRenderedObject(std::string path)
 {
 	auto res = sceneObjects.find(path);
@@ -325,7 +349,13 @@ void SceneController::loadAndDisplayObject(std::string object_path)
 				scene_object->registerRasterizationObject(object);
 			}
 
-			scene_object->initVoxels();
+			if (scene_object->hasVoxels()) {
+				scene_object->initVoxels();
+			}
+
+			if (scene_object->hasOctree()) {
+				scene_object->initOctree();
+			}
 
 			sceneObjects[object_path] = scene_object;
 			switchRenderedObject(object_path);

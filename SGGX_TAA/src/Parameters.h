@@ -24,9 +24,17 @@ typedef struct octree_params_s {
 	int min_render_depth = 0;
 	int max_render_depth = 8;
 
+	// At a depth greater than the max buffer size specified in shader (at the time of this writing 32)
+	// undefined behaviour might occur in shader
+	int max_tree_depth = 6;
+
 	int roentgen_denominator = 50;
 
+	int num_iterations = 32;
+
 	bool auto_lod = false;
+
+	bool new_building = false;
 } Octree_Params;
 
 typedef struct params_s {
@@ -43,9 +51,7 @@ typedef struct params_s {
 	int min_visualization_depth = 0;
 	int max_visualization_depth = 6;
 
-	// At a depth greater than the max buffer size specified in shader (at the time of this writing 32)
-	// undefined behaviour might occur in shader
-	int max_tree_depth = 8;
+	
 
 	int current_render_type_index = 0;
 	int old_render_type_index = current_render_type_index;
@@ -53,6 +59,8 @@ typedef struct params_s {
 
 	std::string active_shader_output = "";
 	std::string selected_file = "";
+
+	float roughness = 0.3;
 
 	float light_direction[2] = { 0, 0 };
 	bool printUniformNotFound = false;

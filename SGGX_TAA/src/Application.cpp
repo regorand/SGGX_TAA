@@ -44,7 +44,7 @@ int main(void)
     int xpos, ypos;
     glfwGetMonitorWorkarea(primary, &xpos, &ypos, &parameters.windowWidth, &parameters.windowHeight);
 
-    window = glfwCreateWindow(parameters.windowWidth, parameters.windowHeight, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(parameters.windowWidth, parameters.windowHeight, "SGGX TAA", NULL, NULL);
     if (!window)
     {
         glfwTerminate();

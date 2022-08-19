@@ -16,7 +16,7 @@
 #include "../geometry/Octree.h"
 
 // has corresponding const in phong shader
-static const unsigned int MAX_TEXTURES = 4;
+static const size_t MAX_TEXTURES = 4;
 
 class Renderer
 {
