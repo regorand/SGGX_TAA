@@ -341,8 +341,8 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 					downscaled[i][j] = sggx_mat[i][j] / 8;
 				}
 			}
-			result_sggx_leaf = { sum };
 			writeSGGXMatrix(downscaled, result_sggx_leaf);
+			result_sggx_leaf.sigmas += CONVERT_SPECIAL_VALUE_MASK((uint32_t)(sum * 255));
 		}
 	}
 	else {
@@ -870,6 +870,25 @@ void Octree::writeSGGXMatrix(glm::mat3 matrix, sggx_leaf_node& node)
 	float Syy = matrix[1][1];
 	float Szz = matrix[2][2];
 
+	uint32_t sigma_x = (uint32_t)(glm::sqrt(Sxx) * 255);
+	uint32_t sigma_y = (uint32_t)(glm::sqrt(Syy) * 255);
+	uint32_t sigma_z = (uint32_t)(glm::sqrt(Szz) * 255);
+
+	float f_r_xy = matrix[0][1] / glm::sqrt(Sxx * Syy);
+	float f_r_xz = matrix[0][2] / glm::sqrt(Sxx * Szz);
+	float f_r_yz = matrix[1][2] / glm::sqrt(Syy * Szz);
+
+	uint32_t r_xy = (uint32_t)((f_r_xy + 1) * 128);
+	uint32_t r_xz = (uint32_t)((f_r_xz + 1) * 128);
+	uint32_t r_yz = (uint32_t)((f_r_yz + 1) * 128);
+
+	uint32_t val = CONVERT_Y_VALUE_MASK(sigma_y);
+
+	uint32_t aggregated_sigma = CONVERT_X_VALUE_MASK(sigma_x) + CONVERT_Y_VALUE_MASK(sigma_y) + CONVERT_Z_VALUE_MASK(sigma_z);
+	uint32_t aggregated_rs = CONVERT_X_VALUE_MASK(r_xy) + CONVERT_Y_VALUE_MASK(r_xz) + CONVERT_Z_VALUE_MASK(r_yz);
+
+	node.sigmas = aggregated_sigma;
+	node.rs = aggregated_rs;
 
 	node.sigma_x = glm::sqrt(Sxx);
 	node.sigma_y = glm::sqrt(Syy);

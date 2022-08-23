@@ -34,6 +34,9 @@ typedef struct octree_params_s {
 
 	bool auto_lod = false;
 
+	// terrible name but will be deleted anyways
+	bool compare_memory = false;
+
 	bool new_building = true;
 } Octree_Params;
 

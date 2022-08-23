@@ -10,6 +10,9 @@ struct inner_node_s {
 };
 
 struct leaf_node_s {
+	uint sigmas;
+	uint rs;
+
 	float value;
 
 /*
@@ -32,6 +35,15 @@ struct leaf_node_s {
 
 #define INNER_NODE_TYPE 0
 #define LEAF_TYPE 1
+
+#define READ_X_VALUE_MASK(a) (a & 0x000000FF)
+#define READ_Y_VALUE_MASK(a) ((a >> 8) & 0x000000FF)
+#define READ_Z_VALUE_MASK(a) ((a >> 16) & 0x000000FF)
+
+// #define READ_Y_VALUE_MASK(a) ((a & 0x0000FF00) >> 8)
+// #define READ_Z_VALUE_MASK(a) ((a & 0x00FF0000) >> 16)
+
+#define READ_SPECIAL_VALUE_MASK(a) ((a & 0xFF000000) >> 24)
 
 layout(std430, binding = 1) buffer octree_nodes
 {
@@ -75,6 +87,8 @@ uniform int horizontal_pixels;
 uniform int vertical_pixels;
 
 uniform int num_iterations;
+
+uniform int compare_memory;
 
 // uniform samplerBuffer history_buffer;
 layout(rgba32f) uniform imageBuffer history_buffer;
@@ -356,13 +370,34 @@ mat3 buildSGGXMatrix(leaf_node_s leaf) {
 }
 
 void getSGGXFactors(leaf_node_s leaf, inout float Sxx, inout float Syy, inout float Szz, inout float Sxy, inout float Sxz, inout float Syz) {
-    Sxx = leaf.sigma_x * leaf.sigma_x;
-	Syy = leaf.sigma_y * leaf.sigma_y;
-	Szz = leaf.sigma_z * leaf.sigma_z;
 
-	Sxy = leaf.r_xy * leaf.sigma_x * leaf.sigma_y;
-	Sxz = leaf.r_xz * leaf.sigma_x * leaf.sigma_z;
-	Syz = leaf.r_yz * leaf.sigma_y * leaf.sigma_z;
+    if (compare_memory == 1) {
+        
+        float sigma_x = float(READ_X_VALUE_MASK(leaf.sigmas)) / 255;
+        float sigma_y = float(READ_Y_VALUE_MASK(leaf.sigmas)) / 255;
+        float sigma_z = float(READ_Z_VALUE_MASK(leaf.sigmas)) / 255;
+
+        float r_xy = (float(READ_X_VALUE_MASK(leaf.rs)) / 128) - 1;
+        float r_xz = (float(READ_Y_VALUE_MASK(leaf.rs)) / 128) - 1;
+        float r_yz = (float(READ_Z_VALUE_MASK(leaf.rs)) / 128) - 1;
+
+        Sxx = sigma_x * sigma_x;
+        Syy = sigma_y * sigma_y;
+        Szz = sigma_z * sigma_z;
+
+        Sxy = r_xy * sigma_x * sigma_y;
+        Sxz = r_xz * sigma_x * sigma_z;
+        Syz = r_yz * sigma_y * sigma_z;
+        
+    } else {
+        Sxx = leaf.sigma_x * leaf.sigma_x;
+        Syy = leaf.sigma_y * leaf.sigma_y;
+        Szz = leaf.sigma_z * leaf.sigma_z;
+
+        Sxy = leaf.r_xy * leaf.sigma_x * leaf.sigma_y;
+        Sxz = leaf.r_xz * leaf.sigma_x * leaf.sigma_z;
+        Syz = leaf.r_yz * leaf.sigma_y * leaf.sigma_z;
+    }
 }
 
 
@@ -603,6 +638,14 @@ void main() {
                 leaf_node_s leaf = leaves_data[leaf_index];
                 //vec3 normal = vec3(leaf.normal_x, leaf.normal_y, leaf.normal_z);
 
+                    float sigma_x = float(READ_X_VALUE_MASK(leaf.sigmas)) / 255;
+                    float sigma_y = float(READ_Y_VALUE_MASK(leaf.sigmas)) / 255;
+                    float sigma_z = float(READ_Z_VALUE_MASK(leaf.sigmas)) / 255;
+
+                //out_color = vec4(sigma_x, sigma_y, sigma_z, 1);
+                // out_color = vec4(vec3(sigma_y * 1000000), 1);
+                //return;
+
                 if (output_type == 0 && abs(leaf.value) > 1e-3) {
                     vec3 color = evaluateSggx(leaf, ray_dir);
                     color *= 0.9;
@@ -671,7 +714,7 @@ void main() {
     vec4 new_buffer_color = out_color * alpha + old_color * (1 - alpha);
     imageStore(history_buffer, buffer_index, new_buffer_color);
 
-    out_color = new_buffer_color;
+    // out_color = new_buffer_color;
 
     imageStore(history_buffer, buffer_index, out_color);
 

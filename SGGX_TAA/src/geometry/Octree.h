@@ -21,6 +21,16 @@
 #define INNER_NODE_TYPE 0
 #define LEAF_TYPE 1
 
+#define READ_X_VALUE_MASK(a) (a & 0x000000FF)
+#define READ_Y_VALUE_MASK(a) ((a & 0x0000FF00) >> 8)
+#define READ_Z_VALUE_MASK(a) ((a & 0x00FF0000) >> 16)
+#define READ_SPECIAL_VALUE_MASK(a) ((a & 0xFF000000) >> 24)
+
+#define CONVERT_X_VALUE_MASK(a) (a & 0x000000FF)
+#define CONVERT_Y_VALUE_MASK(a) ((a << 8 ) & 0x0000FF00)
+#define CONVERT_Z_VALUE_MASK(a) ((a << 16) & 0x00FF0000)
+#define CONVERT_SPECIAL_VALUE_MASK(a) ((a << 24) & 0xFF000000)
+
 typedef struct {
 	// highest level bit indicates type, 0: inner; 1: leaf
 	// rest is index in corresponding array
@@ -40,6 +50,15 @@ typedef struct {
 } obj_leaf_node;
 
 typedef struct {
+	// first 8 bits: x values
+	// second 8 bits: y values
+	// third 8 bits: z values
+	// last 8 bits -> special
+
+
+	// last 8 bits here are density;
+	uint32_t sigmas;
+	uint32_t rs;
 	// current shader implementation means this will have to be padded to mod 4 bytes, once we use it
 	float density;
 	//float normal[3];

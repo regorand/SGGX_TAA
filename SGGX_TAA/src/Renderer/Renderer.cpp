@@ -179,6 +179,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("vertical_pixels", vertical_pixels);
 
 		shader->setUniform1i("history_buffer", 0);
+		shader->setUniform1i("compare_memory", octree_params.compare_memory ? 1 : 0);
 
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
 
