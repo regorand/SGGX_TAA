@@ -36,15 +36,13 @@ typedef struct inner_node_s {
 } inner_node;
 
 typedef struct {
-	std::vector<float> vertices;
-	std::vector<float> normals;
 	std::vector<unsigned int> indices;
 } obj_leaf_node;
 
 typedef struct {
 	// current shader implementation means this will have to be padded to mod 4 bytes, once we use it
 	float density;
-	float normal[3];
+	//float normal[3];
 
 	//later do memory optimization: 1 byte per value is enough, maybe float_val = byte_val / 255
 

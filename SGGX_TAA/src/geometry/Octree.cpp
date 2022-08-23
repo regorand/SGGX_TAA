@@ -177,14 +177,10 @@ bool Octree::build(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Object_t& mes
 
 	if (type != LEAF_TYPE) return false;
 
-	if (!octree_params.new_building) {
-		m_tree_vertices = mesh_object.vertices;
-		m_tree_normals = mesh_object.normals;
-	}
-	else {
-		leaves[index].vertices = mesh_object.vertices;
-		leaves[index].normals = mesh_object.normals;
-	}
+
+	m_tree_vertices = mesh_object.vertices;
+	m_tree_normals = mesh_object.normals;
+
 
 	leaves[index].indices = mesh_object.indices;
 
@@ -270,122 +266,84 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 	uint32_t index = NODE_INDEX(node.type_and_index);
 
 	if (!type) {
-		// TODO: figure out what happens when trying to split inner nodes 
-		// -> Just send split call down the hierarchy ?
-		// case should never really happen here though, Tree is always built from scratch
 		return true;
 	}
 
-	/*
-	if (index >= leaves.size()) {
-		std::cout << "Error: Index error on octree leaves" << std::endl;
-		return false;
-	}
-	*/
-
-	//obj_leaf_node current_leaf = leaves[index];
-
-	// 1. if at max depth -> goto 6.
+	// 1. if at max depth or empty -> goto 6.
 	if (params.depth < params.max_depth && indices.size() > 0) {
-		// Split this leaf further
-
-		// 2. create new inner
 		inner_node new_inner;
 		node.type_and_index = MAKE_INNER(inner_nodes.size());
 
-		// 3. create new leaves
-		//obj_leaf_node new_leafs[8];
-
-		// 4. put indices in new leaves 
-
-		std::vector<unsigned int> leaf_indices[8];
-		if (indices.size() % 3 == 0) {
-			for (size_t i = 0; i < indices.size(); i += 3) {
-				glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i]);
-				glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 1]);
-				glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 2]);
-
-				for (size_t j = 0; j < 8; j++) {
-					glm::vec3 new_lower = params.lower;
-					glm::vec3 new_higher = params.higher;
-					setNewBounds(j, &new_lower, &new_higher);
-
-					glm::vec3 box_center = (new_lower + new_higher) / glm::vec3(2);
-					glm::vec3 extents = box_center - new_lower;
-
-					if (triangleBoxIntersection({ box_center, extents }, { v1, v2, v3 })) {
-						leaf_indices[j].push_back(indices[i]);
-						leaf_indices[j].push_back(indices[i + 1]);
-						leaf_indices[j].push_back(indices[i + 2]);
-					}
-
-				}
-			}
-		}
-
-		std::vector<unsigned int>().swap(indices);
-
-		// register new inner and new leaves
 		new_inner.node_indices[0] = nodes.size();
 		octree_node new_node = { MAKE_LEAF(index) };
-
 		nodes.push_back(new_node);
-		//leaves[index] = new_leafs[0];
 		for (size_t i = 1; i < 8; i++) {
 			new_inner.node_indices[i] = nodes.size();
 			octree_node new_node = { MAKE_LEAF(leaves.size()) };
 
 			nodes.push_back(new_node);
-			//leaves.push_back(new_leafs[i]);
 		}
 
 		inner_nodes.push_back(new_inner);
-
-		// 5. recurse into new leaves and collect sggx values
 
 		// aggregation values over all children
 		float sum = 0;
 		glm::vec3 normal = glm::vec3(0);
 		glm::mat3 sggx_mat = glm::mat3(0);
 
+		std::vector<unsigned int> child_indices;
 		bool result = true;
-		for (int i = 0; i < 8; i++) {
-			//if (new_leafs[i].indices.size() > 0) {
-				sggx_leaf_node child_value;
-
+		if (indices.size() % 3 == 0) {
+			for (size_t i = 0; i < 8; i++) {
+				child_indices.clear();
 				glm::vec3 new_lower = params.lower;
 				glm::vec3 new_higher = params.higher;
 				setNewBounds(i, &new_lower, &new_higher);
 
+				glm::vec3 box_center = (new_lower + new_higher) / glm::vec3(2);
+				glm::vec3 extents = box_center - new_lower;
 
+				for (size_t j = 0; j < indices.size(); j += 3) {
+					glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[j]);
+					glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[j + 1]);
+					glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[j + 2]);
+
+					if (triangleBoxIntersection({ box_center, extents }, { v1, v2, v3 })) {
+						child_indices.push_back(indices[j]);
+						child_indices.push_back(indices[j + 1]);
+						child_indices.push_back(indices[j + 2]);
+					}
+				}
+
+				sggx_leaf_node child_value;
 				TreeBuildParams new_params = { new_lower, new_higher, params.maxPointsPerLeaf, params.depth + 1, params.max_depth };
 
 				result &= buildSGGXNode(new_inner.node_indices[i],
-					leaf_indices[i],
+					child_indices,
 					new_params,
 					child_value);
 
 				sum += child_value.density;
-				normal += glm::make_vec3(child_value.normal);
 				sggx_mat += buildSGGXMatrix(child_value);
-			//}
-		}
-		if (!result) return false;
-
-		sum /= 8;
-		if (sum < 0) {
-			int a = 0;
-		}
-		normal = glm::normalize(normal);
-		//sggx_mat /= glm::mat3(8, 8, 8, 8, 8, 8, 8, 8, 8);
-		glm::mat3 downscaled;
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 3; j++) {
-				downscaled[i][j] = sggx_mat[i][j] / 8;
 			}
+			std::vector<unsigned int>().swap(indices);
+			std::vector<unsigned int>().swap(child_indices);
+
+			if (!result) return false;
+
+			sum /= 8;
+			if (sum < 0) {
+				int a = 0;
+			}
+			glm::mat3 downscaled;
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					downscaled[i][j] = sggx_mat[i][j] / 8;
+				}
+			}
+			result_sggx_leaf = { sum };
+			writeSGGXMatrix(downscaled, result_sggx_leaf);
 		}
-		result_sggx_leaf = { sum, { normal.x, normal.y, normal.z } };
-		writeSGGXMatrix(downscaled, result_sggx_leaf);
 	}
 	else {
 		size_t depth_diff = m_max_depth - params.depth;
@@ -394,8 +352,36 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		glm::vec3 normal = glm::vec3(0);
 		size_t count = 0;
 
-		for (size_t i = 0; i < indices.size(); i++) {
-			normal += glm::make_vec3(m_tree_normals.data() + 3 * indices[i]);
+		for (size_t i = 0; i < indices.size(); i+=3) {
+			// TODO here:
+			// get normals for triangle in total and each vertex
+			glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i]);
+			glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 1]);
+			glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 2]);
+
+			glm::vec3 triangle_plane_normal = glm::normalize(glm::cross(glm::normalize(v2 - v1), glm::normalize(v3 - v1)));
+
+			glm::vec3 n1 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i]);
+			glm::vec3 n2 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i + 1]);
+			glm::vec3 n3 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i + 2]);
+
+			// project voxel center along normal (shortest distance) onto triangle
+			glm::vec3 voxel_center = (params.lower + params.higher) / glm::vec3(2);
+
+			glm::vec3 dist_vector = voxel_center - v1;
+			float dist = glm::dot(dist_vector, triangle_plane_normal);
+
+			glm::vec3 projected_point = voxel_center - dist * triangle_plane_normal;
+			// take that position and interpolate normals to that position
+
+			float u, v, w;
+			calculateClampedBarycentricCoordinates(v1, v2, v3, projected_point, u, v, w);
+
+			normal += u * n1 + v * n2 + w * n3;
+
+			// idea only take one normal ?
+
+			// normal += glm::make_vec3(m_tree_normals.data() + 3 * indices[i]);
 			count++;
 		}
 
@@ -407,9 +393,9 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			writeSGGXMatrix(SGGX_mat, result_sggx_leaf);
 		}
 
-		result_sggx_leaf.normal[0] = normal.x;
-		result_sggx_leaf.normal[1] = normal.y;
-		result_sggx_leaf.normal[2] = normal.z;
+		// result_sggx_leaf.normal[0] = normal.x;
+		// result_sggx_leaf.normal[1] = normal.y;
+		// result_sggx_leaf.normal[2] = normal.z;
 
 		result_sggx_leaf.density = 0;
 		if (indices.size() > 0) {
@@ -423,9 +409,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 	renderable_leaves.push_back(result_sggx_leaf);
 	nodes[node_index] = node;
 
-	// 7. return sggx values
 	return true;
-
 }
 
 bool Octree::getLeafAt(glm::vec3 position, obj_leaf_node** target)
@@ -512,124 +496,57 @@ bool Octree::splitNode(uint32_t node_index, glm::vec3 lower, glm::vec3 higher, s
 		std::vector<float> local_normals;
 		std::vector<unsigned int> local_indices;
 		for (size_t i = 0; i < current_leaf.indices.size(); i += 3) {
-			if (octree_params.new_building) {
 
-				local_vertices.clear();
-				local_normals.clear();
-				local_indices.clear();
+			// tesselate_triangle(
 
-
-				//TODO can try around with this
-				float max_edge_length = higher.x - lower.x;
-
-				cond_tesselate_tri(max_edge_length,
-					i,
-					current_leaf.indices,
-					local_indices,
-					current_leaf.vertices,
-					local_vertices,
-					current_leaf.normals,
-					local_normals);
-
-				for (int j = 0; j < local_indices.size(); j += 3) {
-					glm::vec3 v1 = glm::make_vec3(local_vertices.data() + 3 * local_indices[j]);
-					glm::vec3 v2 = glm::make_vec3(local_vertices.data() + 3 * local_indices[j + 1]);
-					glm::vec3 v3 = glm::make_vec3(local_vertices.data() + 3 * local_indices[j + 2]);
-
-					glm::vec3 n1 = glm::make_vec3(local_normals.data() + 3 * local_indices[j]);
-					glm::vec3 n2 = glm::make_vec3(local_normals.data() + 3 * local_indices[j + 1]);
-					glm::vec3 n3 = glm::make_vec3(local_normals.data() + 3 * local_indices[j + 2]);
-
-					// use vertices to get triangle center
-					glm::vec3 center = (v1 + v2 + v3) / glm::vec3(3);
-
-					// use triangle center to get inner_index
-					uint32_t inner_node_index = getInnerNodeIndex(lower, higher, center);
-
-					unsigned int base_index = new_leafs[inner_node_index].vertices.size() / 3;
-
-					new_leafs[inner_node_index].vertices.push_back(v1.x);
-					new_leafs[inner_node_index].vertices.push_back(v1.y);
-					new_leafs[inner_node_index].vertices.push_back(v1.z);
-
-					new_leafs[inner_node_index].vertices.push_back(v2.x);
-					new_leafs[inner_node_index].vertices.push_back(v2.y);
-					new_leafs[inner_node_index].vertices.push_back(v2.z);
-
-					new_leafs[inner_node_index].vertices.push_back(v3.x);
-					new_leafs[inner_node_index].vertices.push_back(v3.y);
-					new_leafs[inner_node_index].vertices.push_back(v3.z);
+		// TODO tesselate here if not at max_depth ?
+		// extra parameter for min_leaf_depth ?
+		// tesselate to match children size
 
 
-					new_leafs[inner_node_index].normals.push_back(n1.x);
-					new_leafs[inner_node_index].normals.push_back(n1.y);
-					new_leafs[inner_node_index].normals.push_back(n1.z);
+			glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i]);
+			glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 1]);
+			glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 2]);
 
-					new_leafs[inner_node_index].normals.push_back(n2.x);
-					new_leafs[inner_node_index].normals.push_back(n2.y);
-					new_leafs[inner_node_index].normals.push_back(n2.z);
+			for (size_t j = 0; j < 8; j++) {
+				glm::vec3 new_lower = lower;
+				glm::vec3 new_higher = higher;
+				setNewBounds(j, &new_lower, &new_higher);
 
-					new_leafs[inner_node_index].normals.push_back(n3.x);
-					new_leafs[inner_node_index].normals.push_back(n3.y);
-					new_leafs[inner_node_index].normals.push_back(n3.z);
+				glm::vec3 box_center = (new_lower + new_higher) / glm::vec3(2);
+				glm::vec3 extents = box_center - new_lower;
 
-					// push new index
-					new_leafs[inner_node_index].indices.push_back(base_index);
-					new_leafs[inner_node_index].indices.push_back(base_index + 1);
-					new_leafs[inner_node_index].indices.push_back(base_index + 2);
+				if (triangleBoxIntersection({ box_center, extents }, { v1, v2, v3 })) {
+					new_leafs[j].indices.push_back(current_leaf.indices[i]);
+					new_leafs[j].indices.push_back(current_leaf.indices[i + 1]);
+					new_leafs[j].indices.push_back(current_leaf.indices[i + 2]);
 				}
 			}
-			else {
-				// tesselate_triangle(
 
-			// TODO tesselate here if not at max_depth ?
-			// extra parameter for min_leaf_depth ?
-			// tesselate to match children size
-
-
-				glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i]);
-				glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 1]);
-				glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 2]);
-
-				for (size_t j = 0; j < 8; j++) {
-					glm::vec3 new_lower = lower;
-					glm::vec3 new_higher = higher;
-					setNewBounds(j, &new_lower, &new_higher);
-
-					glm::vec3 box_center = (new_lower + new_higher) / glm::vec3(2);
-					glm::vec3 extents = box_center - new_lower;
-
-					if (triangleBoxIntersection({ box_center, extents }, { v1, v2, v3 })) {
-						new_leafs[j].indices.push_back(current_leaf.indices[i]);
-						new_leafs[j].indices.push_back(current_leaf.indices[i + 1]);
-						new_leafs[j].indices.push_back(current_leaf.indices[i + 2]);
-					}
-				}
-
-				/*
-				glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i]);
-				glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 1]);
-				glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 2]);
+			/*
+			glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i]);
+			glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 1]);
+			glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * current_leaf.indices[i + 2]);
 
 
-				glm::vec3 n1 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i]);
-				glm::vec3 n2 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i + 1]);
-				glm::vec3 n3 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i + 2]);
+			glm::vec3 n1 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i]);
+			glm::vec3 n2 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i + 1]);
+			glm::vec3 n3 = glm::make_vec3(m_tree_normals.data() + 3 * current_leaf.indices[i + 2]);
 
-				// use vertices to get triangle center
-				glm::vec3 center = (v1 + v2 + v3) / glm::vec3(3);
+			// use vertices to get triangle center
+			glm::vec3 center = (v1 + v2 + v3) / glm::vec3(3);
 
-				// use triangle center to get inner_index
-				uint32_t inner_node_index = getInnerNodeIndex(lower, higher, center);
+			// use triangle center to get inner_index
+			uint32_t inner_node_index = getInnerNodeIndex(lower, higher, center);
 
 
-				// push new index
-				new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i]);
-				new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i + 1]);
-				new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i + 2]);
+			// push new index
+			new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i]);
+			new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i + 1]);
+			new_leafs[inner_node_index].indices.push_back(current_leaf.indices[i + 2]);
 
-				*/
-			}
+			*/
+
 		}
 	}
 
@@ -710,13 +627,7 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 		size_t count = 0;
 
 		for (size_t i = 0; i < leaf.indices.size(); i++) {
-			if (octree_params.new_building) {
-				normal += glm::make_vec3(leaf.normals.data() + 3 * leaf.indices[i]);
-			}
-			else {
-				normal += glm::make_vec3(m_tree_normals.data() + 3 * leaf.indices[i]);
-			}
-
+			normal += glm::make_vec3(m_tree_normals.data() + 3 * leaf.indices[i]);
 			count++;
 		}
 		sggx_leaf_node sggx_leaf = { 0 };
@@ -727,9 +638,9 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 			writeSGGXMatrix(SGGX_mat, sggx_leaf);
 		}
 
-		sggx_leaf.normal[0] = normal.x;
-		sggx_leaf.normal[1] = normal.y;
-		sggx_leaf.normal[2] = normal.z;
+		// sggx_leaf.normal[0] = normal.x;
+		// sggx_leaf.normal[1] = normal.y;
+		// sggx_leaf.normal[2] = normal.z;
 
 		sggx_leaf.density = 0;
 		if (leaf.indices.size() > 0) {
@@ -764,7 +675,7 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 			return false;
 		}
 		sum += child_values[i].density;
-		normal += glm::make_vec3(child_values[i].normal);
+		//normal += glm::make_vec3(child_values[i].normal);
 		sggx_mat += buildSGGXMatrix(child_values[i]);
 
 
@@ -775,7 +686,7 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 	if (sum < 0) {
 		int a = 0;
 	}
-	normal = glm::normalize(normal);
+	//normal = glm::normalize(normal);
 	//sggx_mat /= glm::mat3(8, 8, 8, 8, 8, 8, 8, 8, 8);
 	glm::mat3 downscaled;
 	for (int i = 0; i < 3; i++) {
@@ -783,7 +694,8 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 			downscaled[i][j] = sggx_mat[i][j] / 8;
 		}
 	}
-	sggx_leaf_node sggx_leaf = { sum, { normal.x, normal.y, normal.z } };
+	sggx_leaf_node sggx_leaf = { sum };
+	//sggx_leaf_node sggx_leaf = { sum, { normal.x, normal.y, normal.z } };
 	writeSGGXMatrix(downscaled, sggx_leaf);
 
 	node.leaf_index = renderable_leaves.size();

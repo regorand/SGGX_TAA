@@ -34,7 +34,7 @@ typedef struct octree_params_s {
 
 	bool auto_lod = false;
 
-	bool new_building = false;
+	bool new_building = true;
 } Octree_Params;
 
 typedef struct params_s {
@@ -51,7 +51,7 @@ typedef struct params_s {
 	int min_visualization_depth = 0;
 	int max_visualization_depth = 6;
 
-	
+	bool flat_shade = true;
 
 	int current_render_type_index = 0;
 	int old_render_type_index = current_render_type_index;

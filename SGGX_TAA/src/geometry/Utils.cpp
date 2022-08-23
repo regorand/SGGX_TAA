@@ -61,27 +61,6 @@ void make_flat_shaded(std::vector<float>& vertices,
 		if (writeMaterialIndices) target.face_material_indices.push_back(face_material_indices[i / 3]);
 
 	}
-
-	//std::cout << "Handling Vertex tex_coords" << "\n" << std::endl;
-	/*
-	for (int i = 0; i < max_index; i++) {
-		int size = tex_map[i].size();
-		/*
-		//std::cout << "Size: " << size << "\t";
-		for (int j = 0; j < size; j++) {
-			std::cout << " " << tex_map[i][j] << ",";
-		}
-		std::cout << std::endl;
-		
-		if (size > 10) {
-
-			std::cout << "X: " << vertices[3 * i] << std::endl;
-			std::cout << "Y: " << vertices[3 * i + 1] << std::endl;
-			std::cout << "Z: " << vertices[3 * i + 2] << std::endl;
-		}
-
-	}
-	*/
 }
 
 void make_smooth_shaded(std::vector<float>& vertices,
@@ -540,6 +519,62 @@ bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_ite
 			}
 		}
 	}
+	return true;
+}
+
+bool calculateClampedBarycentricCoordinates(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 p, float& u, float& v, float& w)
+{
+	glm::vec3 v0 = b - a, v1 = c - a, v2 = p - a;
+	float d00 = glm::dot(v0, v0);
+	float d01 = glm::dot(v0, v1);
+	float d11 = glm::dot(v1, v1);
+	float d20 = glm::dot(v2, v0);
+	float d21 = glm::dot(v2, v1);
+	float denom = d00 * d11 - d01 * d01;
+	v = (d11 * d20 - d01 * d21) / denom;
+	w = (d00 * d21 - d01 * d20) / denom;
+	u = 1.0f - v - w;
+
+	if (u < 0) u = 0;
+	if (v < 0) v = 0;
+	if (w < 0) w = 0;
+
+	float sum = u + v + w;
+	
+	u /= sum;
+	v /= sum;
+	w /= sum;
+
+
+	/*
+	if (u < 0)
+	{
+		float dot1 = glm::dot(p - b, c - b);
+		float dot2 = glm::dot(c - b, c - b);
+		float t = glm::dot(p - b, c - b) / glm::dot(c - b, c - b);
+		t = clamp01(t);
+		u = 0.0f;
+		v = 1.0f - t;
+		w = t;
+	}
+	else if (v < 0)
+	{
+		float t = glm::dot(p - c, a - c) / glm::dot(a - c, a - c);
+		t = clamp01(t);
+		u = t;
+		v = 0.0f;
+		w = 1.0f - t;
+	}
+	else if (w < 0)
+	{
+		float t = glm::dot(p - a, b - a) / glm::dot(b - a, b - a);
+		t = clamp01(t);
+		u = 1.0f - t;
+		v = t; 
+		w = 0.0f;
+	}
+	*/
+
 	return true;
 }
 

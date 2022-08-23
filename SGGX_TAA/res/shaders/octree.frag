@@ -12,9 +12,11 @@ struct inner_node_s {
 struct leaf_node_s {
 	float value;
 
+/*
     float normal_x;
     float normal_y;
     float normal_z;
+*/
 
     float sigma_x;
 	float sigma_y;
@@ -69,8 +71,13 @@ uniform float AABBOutlineFactor;
 uniform float horizontal_pixel_size;
 uniform float vertical_pixel_size;
 
+uniform int horizontal_pixels;
+uniform int vertical_pixels;
 
 uniform int num_iterations;
+
+// uniform samplerBuffer history_buffer;
+layout(rgba32f) uniform imageBuffer history_buffer;
 
 uniform vec3 lower;
 uniform vec3 higher;
@@ -434,7 +441,7 @@ vec3 sample_direction(int n, vec3 normal) {
     return normal;
 }
 
-vec3 evaluateSggx(leaf_node_s leaf, vec3 ray_dir, vec3 normal /*wont need normal here later*/) {
+vec3 evaluateSggx(leaf_node_s leaf, vec3 ray_dir) {
 
     vec3 wi = light_dir;
     vec3 wo = ray_dir;
@@ -483,7 +490,19 @@ vec3 evaluateSggx(leaf_node_s leaf, vec3 ray_dir, vec3 normal /*wont need normal
 }
 
 void main() {
+    
+
     out_color = vec4(0);
+
+    if (output_type == 2) {
+        int horizontal_index = int(gl_FragCoord.x);
+        int vertical_index = int(gl_FragCoord.y);
+
+        int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
+
+        out_color = imageLoad(history_buffer, buffer_index);
+        return;
+    }
 
     AABB octreeBound = AABB(lower, higher);
     int max_depth = max_render_depth;
@@ -582,10 +601,10 @@ void main() {
             uint leaf_index = nodes_data[node_index].leaf_data_index;
             if (leaf_index < leaves_size) {
                 leaf_node_s leaf = leaves_data[leaf_index];
-                vec3 normal = vec3(leaf.normal_x, leaf.normal_y, leaf.normal_z);
+                //vec3 normal = vec3(leaf.normal_x, leaf.normal_y, leaf.normal_z);
 
                 if (output_type == 0 && abs(leaf.value) > 1e-3) {
-                    vec3 color = evaluateSggx(leaf, ray_dir, normal);
+                    vec3 color = evaluateSggx(leaf, ray_dir);
                     color *= 0.9;
                     color += 0.1 * vec3(1); 
 
@@ -639,4 +658,26 @@ void main() {
 
     // This renders an outline around the bounding box if AABBOutlineFactor uniform is set to 1
     out_color += AABBOutlineFactor * 0.3 * vec4(outline_color, 1);
+
+
+    int horizontal_index = int(gl_FragCoord.x);
+    int vertical_index = int(gl_FragCoord.y);
+
+    int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
+
+    vec4 old_color = imageLoad(history_buffer, buffer_index);
+
+    float alpha = 0.4;
+    vec4 new_buffer_color = out_color * alpha + old_color * (1 - alpha);
+    imageStore(history_buffer, buffer_index, new_buffer_color);
+
+    out_color = new_buffer_color;
+
+    imageStore(history_buffer, buffer_index, out_color);
+
+    //out_color = vec4(1, 1, 0, 1);
+
+    
+
+    
 }

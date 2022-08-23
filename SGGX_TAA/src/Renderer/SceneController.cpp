@@ -49,11 +49,15 @@ bool SceneController::init()
 
 void SceneController::doFrame()
 {
-	AABB aabb = { glm::vec3(0, 0, 0), glm::vec3(1, 1, 1) };
-	Triangle tri = { glm::vec3(0.12, 1.32, 0.82), glm::vec3(-1.78, 1.86, 1.46), glm::vec3(-2.23, -0.08, 1.43) };
+	glm::vec3 v1(0, 0, 0);
+	glm::vec3 v2(1, 0, 0);
+	glm::vec3 v3(0, 1, 0);
 
-	bool intersects = triangleBoxIntersection(aabb, tri);
+	glm::vec3 p(2, 1, 0);
 
+	float u, v, w;
+
+	calculateClampedBarycentricCoordinates(v1, v2, v3, p, u, v, w);
 
 	updateModels();
 	updateCamera();

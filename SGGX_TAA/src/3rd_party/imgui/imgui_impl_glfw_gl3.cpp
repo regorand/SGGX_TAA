@@ -40,6 +40,8 @@
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
 
+#include <iostream>
+
 // GLEW/GLFW
 #include <GL/glew.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
 #include <GLFW/glfw3.h>
@@ -78,8 +80,20 @@ void ImGui_ImplGlfwGL3_RenderDrawData(ImDrawData* draw_data)
     draw_data->ScaleClipRects(io.DisplayFramebufferScale);
 
     // Backup GL state
-    GLenum last_active_texture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);
+
     GLenum error;
+    while (error = glGetError()/* != GL_NO_ERROR */)
+    {
+        std::cout << "OpenGL Error: " << error << std::endl;
+    }
+
+    GLenum last_active_texture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);
+    
+    while (error = glGetError()/* != GL_NO_ERROR */)
+    {
+        std::cout << "OpenGL Error: " << error << std::endl;
+    }
+
     glActiveTexture(GL_TEXTURE0);
     GLint last_program; glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
     GLint last_texture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);

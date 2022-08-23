@@ -46,6 +46,7 @@
     <ClCompile Include="src\geometry\Utils.cpp" />
     <ClCompile Include="src\gl_wrappers\Texture.cpp" />
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
+    <ClCompile Include="src\gl_wrappers\TextureBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\geometry\Octree.h" />
@@ -83,6 +84,7 @@
     <ClInclude Include="src\gl_wrappers\VertexArray.h" />
     <ClInclude Include="src\gl_wrappers\Texture.h" />
     <ClInclude Include="src\geometry\VoxelGrid.h" />
+    <ClInclude Include="src\gl_wrappers\TextureBuffer.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

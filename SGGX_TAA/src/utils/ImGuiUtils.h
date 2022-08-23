@@ -78,7 +78,7 @@ void doImGui(SceneController& controller) {
 	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
 
 	ImGui::NewLine();
-
+	ImGui::Checkbox("Flat Shade", &parameters.flat_shade);
 	ImGui::SliderInt("Voxel Count", &parameters.voxel_count, 10, 300);
 	if (loadableObjs.size() > 0) {
 		doCombo("Loadable Obj", parameters.selected_file, loadableObjs);

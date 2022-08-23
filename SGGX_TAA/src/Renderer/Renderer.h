@@ -14,6 +14,7 @@
 #include "RayMarchObject.h"
 #include "../geometry/VoxelGrid.h"
 #include "../geometry/Octree.h"
+#include "../gl_wrappers/TextureBuffer.h"
 
 // has corresponding const in phong shader
 static const size_t MAX_TEXTURES = 4;
@@ -21,6 +22,11 @@ static const size_t MAX_TEXTURES = 4;
 class Renderer
 {
 	glm::mat4 projectionMatrix;
+
+	unsigned int m_vertical_view_port_size;
+	unsigned int m_horizontal_view_port_size;
+
+	std::shared_ptr<TextureBuffer> m_bufferTexture;
 public:
 	Renderer();
 	~Renderer() {};

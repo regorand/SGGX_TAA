@@ -109,6 +109,6 @@ void main() {
         color += factor * jacobian * normals_distribution(h_r, macro_normal) * G(light_dir, view_direction, macro_normal, h_r) * lights_intensities[i] * surface_color;
     }
     
-
+    
     out_color = vec4(color, 1);
 }

@@ -71,7 +71,9 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	std::string filename = path.filename().string();
 
 	std::string dir = path.remove_filename().string();
-	bool res = loadObjMesh(dir, filename, mesh, ShadingType::FLAT);
+
+	ShadingType shadingtype = parameters.flat_shade ? ShadingType::FLAT : ShadingType::SMOOTH;
+	bool res = loadObjMesh(dir, filename, mesh, shadingtype);
 
 	glm::vec3 diff = mesh.higher - mesh.lower;
 	float max_dimension = glm::max(diff.x, glm::max(diff.y, diff.z));
@@ -89,6 +91,7 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 
 	scene_object->setMeshObject(mesh);
 
+	/*
 	std::shared_ptr<VoxelGrid> voxels;
 	if (initVoxels(mesh, parameters.voxel_count, voxels)) {
 		scene_object->registerVoxels(voxels);
@@ -96,12 +99,12 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	else {
 		std::cout << "Failed to load voxels for obj file: " << dir + filename << std::endl;
 	}
+	*/
+	std::cout << "Starting Octree building" << std::endl;
 	bool octree_res = false;
 	std::shared_ptr<Octree> octree = std::make_shared<Octree>();
-	std::shared_ptr<Octree> octree2 = std::make_shared<Octree>();
 	if (!octree_params.new_building) {
 		octree_res = build_Obj_Octree(mesh, *octree, octree_params.max_tree_depth);
-		octree_res = octree2->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
 		
 		if (octree_res) {
 			octree->createSGGX();
@@ -109,6 +112,7 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	}
 	else {
 		octree_res = octree->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
+		std::cout << "Finished building octree" << std::endl;
 	}
 	
 	if (!octree_res) {
@@ -116,6 +120,7 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	}
 	else {
 		scene_object->registerOctree(octree);
+		std::cout << "Finished registering octree" << std::endl;
 	}
 
 	return true;

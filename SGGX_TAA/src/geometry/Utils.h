@@ -57,6 +57,7 @@ bool saveToFile(std::string file_name, Mesh_Object_t &object);
 
 bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_iteration);
 
+bool calculateClampedBarycentricCoordinates(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 p, float& u, float& v, float& w);
 
 /*
  * implements triangle box intersection test
@@ -79,4 +80,10 @@ template<typename T>
 inline T min3(T value1, T value2, T value3)
 {
 	return glm::min(value1, glm::min(value2, value3));
+}
+
+inline float clamp01(float t) {
+	if (t < 0) return 0;
+	if (t > 1) return 1;
+	return t;
 }

@@ -4,6 +4,26 @@
 Renderer::Renderer()
 {
 	projectionMatrix = glm::mat4(1);
+	GLint data[4];
+	glGetIntegerv(GL_VIEWPORT, data);
+	m_horizontal_view_port_size = data[2];
+	m_vertical_view_port_size = data[3];
+
+	size_t buf_size = 4 * sizeof(float) * m_horizontal_view_port_size * m_vertical_view_port_size;
+	float* tex_coords_buffer = new float[buf_size];
+
+	memset(tex_coords_buffer, 0x3f800000, buf_size);
+
+	tex_coords_buffer[0] = 1;
+	tex_coords_buffer[1] = 0;
+	tex_coords_buffer[2] = 1;
+	tex_coords_buffer[3] = 1;
+
+	const unsigned int tex_buf_target = 4;
+
+	m_bufferTexture = std::make_shared<TextureBuffer>(tex_coords_buffer, buf_size, tex_buf_target);
+
+	delete tex_coords_buffer;
 }
 
 void Renderer::render(RasterizationObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights)
@@ -130,6 +150,8 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 	auto shader = object->getOctreeShader();
 	shader->bind();
 
+	m_bufferTexture->bind();
+
 	bool bound = octree.bindBuffers();
 	if (bound) {
 		glm::mat4 transformation_matrix = camera.getViewMatrix();
@@ -153,6 +175,11 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1f("horizontal_pixel_size", horizontal_pixel_size);
 		shader->setUniform1f("vertical_pixel_size", vertical_pixel_size);
 
+		shader->setUniform1i("horizontal_pixels", horizontal_pixels);
+		shader->setUniform1i("vertical_pixels", vertical_pixels);
+
+		shader->setUniform1i("history_buffer", 0);
+
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
 
 		shader->setUniform1i("num_iterations", octree_params.num_iterations);
@@ -173,9 +200,14 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
 	}
 
 	octree.unbindBuffers();
+
+	m_bufferTexture->unbind();
+
 	object->getVertexArray()->unbind();
 	object->getArrayBuffer()->unbind();
 	shader->unbind();
