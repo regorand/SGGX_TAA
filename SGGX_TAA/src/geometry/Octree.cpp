@@ -201,13 +201,6 @@ bool Octree::createSGGX()
 {
 	sggx_leaf_node leaf; //Leaf to dereference so program doesn't crash
 	bool res = convertNode(0, &leaf, 0);
-	float max = 0;
-	float mean = 0;
-	for (auto& entry : renderable_leaves) {
-		max = glm::max(max, entry.density);
-		mean += entry.density;
-	}
-	mean /= renderable_leaves.size();
 	return res;
 }
 
@@ -287,7 +280,9 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		inner_nodes.push_back(new_inner);
 
 		// aggregation values over all children
-		float sum = 0;
+		// 
+		// can aggregate density without converting it back, because it is only linearly scaled
+		uint32_t density_sum = 0; 
 		glm::vec3 normal = glm::vec3(0);
 		glm::mat3 sggx_mat = glm::mat3(0);
 
@@ -323,7 +318,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 					new_params,
 					child_value);
 
-				sum += child_value.density;
+				density_sum += READ_SPECIAL_VALUE_MASK(child_value.sigmas);
 				sggx_mat += buildSGGXMatrix(child_value);
 			}
 			std::vector<unsigned int>().swap(indices);
@@ -331,8 +326,8 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 
 			if (!result) return false;
 
-			sum /= 8;
-			if (sum < 0) {
+			density_sum /= 8;
+			if (density_sum < 0) {
 				int a = 0;
 			}
 			glm::mat3 downscaled;
@@ -342,7 +337,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 				}
 			}
 			writeSGGXMatrix(downscaled, result_sggx_leaf);
-			result_sggx_leaf.sigmas += CONVERT_SPECIAL_VALUE_MASK((uint32_t)(sum * 255));
+			result_sggx_leaf.sigmas += CONVERT_SPECIAL_VALUE_MASK((uint32_t)(density_sum));
 		}
 	}
 	else {
@@ -385,7 +380,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			count++;
 		}
 
-		result_sggx_leaf = { 0 };
+		result_sggx_leaf = { 0, 0 };
 		if (count != 0) {
 			normal = glm::normalize(normal);
 
@@ -397,9 +392,8 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		// result_sggx_leaf.normal[1] = normal.y;
 		// result_sggx_leaf.normal[2] = normal.z;
 
-		result_sggx_leaf.density = 0;
 		if (indices.size() > 0) {
-			result_sggx_leaf.density = 1;
+			result_sggx_leaf.sigmas += CONVERT_SPECIAL_VALUE_MASK(255);
 		}
 	}
 
@@ -642,9 +636,9 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 		// sggx_leaf.normal[1] = normal.y;
 		// sggx_leaf.normal[2] = normal.z;
 
-		sggx_leaf.density = 0;
+		//sggx_leaf.density = 0;
 		if (leaf.indices.size() > 0) {
-			sggx_leaf.density = size_factor;
+			//sggx_leaf.density = size_factor;
 		}
 		node.leaf_index = renderable_leaves.size();
 		renderable_leaves.push_back(sggx_leaf);
@@ -674,7 +668,7 @@ bool Octree::convertNode(uint32_t node_index, sggx_leaf_node* value, size_t curr
 		if (!success) {
 			return false;
 		}
-		sum += child_values[i].density;
+		//sum += child_values[i].density;
 		//normal += glm::make_vec3(child_values[i].normal);
 		sggx_mat += buildSGGXMatrix(child_values[i]);
 
@@ -852,14 +846,21 @@ glm::mat3 Octree::buildSGGXMatrix(glm::vec3 normal)
 
 glm::mat3 Octree::buildSGGXMatrix(sggx_leaf_node node)
 {
+	float sigma_x = float(READ_X_VALUE_MASK(node.sigmas)) / 255;
+	float sigma_y = float(READ_Y_VALUE_MASK(node.sigmas)) / 255;
+	float sigma_z = float(READ_Z_VALUE_MASK(node.sigmas)) / 255;
 
-	float Sxx = node.sigma_x * node.sigma_x;
-	float Syy = node.sigma_y * node.sigma_y;
-	float Szz = node.sigma_z * node.sigma_z;
+	float r_xy = (float(READ_X_VALUE_MASK(node.rs)) / 128) - 1;
+	float r_xz = (float(READ_Y_VALUE_MASK(node.rs)) / 128) - 1;
+	float r_yz = (float(READ_Z_VALUE_MASK(node.rs)) / 128) - 1;
 
-	float Sxy = node.r_xy * node.sigma_x * node.sigma_y;
-	float Sxz = node.r_xz * node.sigma_x * node.sigma_z;
-	float Syz = node.r_yz * node.sigma_y * node.sigma_z;
+	float Sxx = sigma_x * sigma_x;
+	float Syy = sigma_y * sigma_y;
+	float Szz = sigma_z * sigma_z;
+	
+	float Sxy = r_xy * sigma_x * sigma_y;
+	float Sxz = r_xz * sigma_x * sigma_z;
+	float Syz = r_yz * sigma_y * sigma_z;
 
 	return glm::mat3(Sxx, Sxy, Sxz, Sxy, Syy, Syz, Sxz, Syz, Szz);
 }
@@ -889,14 +890,6 @@ void Octree::writeSGGXMatrix(glm::mat3 matrix, sggx_leaf_node& node)
 
 	node.sigmas = aggregated_sigma;
 	node.rs = aggregated_rs;
-
-	node.sigma_x = glm::sqrt(Sxx);
-	node.sigma_y = glm::sqrt(Syy);
-	node.sigma_z = glm::sqrt(Szz);
-
-	node.r_xy = matrix[0][1] / glm::sqrt(Sxx * Syy);
-	node.r_xz = matrix[0][2] / glm::sqrt(Sxx * Szz);
-	node.r_yz = matrix[1][2] / glm::sqrt(Syy * Szz);
 }
 
 bool Octree::buildNodeVisualization(octree_visualization& vis, octree_node node, glm::vec3 lower, glm::vec3 higher, size_t current_depth, size_t min_depth, size_t max_depth)

@@ -59,19 +59,6 @@ typedef struct {
 	// last 8 bits here are density;
 	uint32_t sigmas;
 	uint32_t rs;
-	// current shader implementation means this will have to be padded to mod 4 bytes, once we use it
-	float density;
-	//float normal[3];
-
-	//later do memory optimization: 1 byte per value is enough, maybe float_val = byte_val / 255
-
-	float sigma_x;
-	float sigma_y;
-	float sigma_z;
-
-	float r_xy;
-	float r_xz;
-	float r_yz;
 } sggx_leaf_node;
 
 /*

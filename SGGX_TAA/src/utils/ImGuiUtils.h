@@ -76,7 +76,6 @@ void doImGui(SceneController& controller) {
 	//doCombo("Render Type", parameters.active_render_type, render_types_2);
 	//doCombo("Shader Output Type OLD", parameters.active_shader_output, parameters.active_shader_output_index, shader_output_types);
 	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
-	ImGui::Checkbox("Compare Memories", &octree_params.compare_memory);
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Flat Shade", &parameters.flat_shade);

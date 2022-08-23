@@ -1,6 +1,5 @@
 ﻿#include "Renderer.h"
 
-
 Renderer::Renderer()
 {
 	projectionMatrix = glm::mat4(1);
@@ -179,7 +178,6 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("vertical_pixels", vertical_pixels);
 
 		shader->setUniform1i("history_buffer", 0);
-		shader->setUniform1i("compare_memory", octree_params.compare_memory ? 1 : 0);
 
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
 
@@ -198,6 +196,11 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("nodes_size", octree.getNodesSize());
 		shader->setUniform1i("inner_nodes_size", octree.getInnerSize());
 		shader->setUniform1i("leaves_size", octree.getLeavesSize());
+
+		float s1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float s2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		shader->setUniform1f("seed1", s1);
+		shader->setUniform1f("seed2", s2);
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
