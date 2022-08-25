@@ -59,6 +59,7 @@ typedef struct {
 	// last 8 bits here are density;
 	uint32_t sigmas;
 	uint32_t rs;
+
 } sggx_leaf_node;
 
 /*

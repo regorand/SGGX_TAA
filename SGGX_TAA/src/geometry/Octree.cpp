@@ -27,6 +27,17 @@ bool Octree::initBuffers()
 	const unsigned int inner_nodes_target = 2;
 	const unsigned int leaves_target = 3;
 
+	const unsigned int nodes_size = nodes.size() * sizeof(octree_node);
+	const unsigned int inner_size = inner_nodes.size() * sizeof(inner_node);
+	const unsigned int leaves_size = renderable_leaves.size() * sizeof(sggx_leaf_node);
+	const unsigned int sum = nodes_size + inner_size + leaves_size;
+
+	std::cout
+		<< "Size of Nodes:\t" << nodes_size << " Bytes\n"
+		<< "Size of Inners:\t" << inner_size << " Bytes\n"
+		<< "Size of Leaves:\t" << leaves_size << " Bytes\n" 
+		<< "Total Size:\t" << sum << " Bytes\n" << std::endl;
+
 	m_nodes_ssb = std::make_shared<ShaderStorageBuffer>(nodes.data(), nodes.size() * sizeof(octree_node), nodes_target);
 	m_inner_nodes_ssb
 		= std::make_shared<ShaderStorageBuffer>(inner_nodes.data(), inner_nodes.size() * sizeof(inner_node), inner_nodes_target);

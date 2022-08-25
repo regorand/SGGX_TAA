@@ -103,17 +103,10 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 	std::cout << "Starting Octree building" << std::endl;
 	bool octree_res = false;
 	std::shared_ptr<Octree> octree = std::make_shared<Octree>();
-	if (!octree_params.new_building) {
-		octree_res = build_Obj_Octree(mesh, *octree, octree_params.max_tree_depth);
-		
-		if (octree_res) {
-			octree->createSGGX();
-		}
-	}
-	else {
-		octree_res = octree->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
-		std::cout << "Finished building octree" << std::endl;
-	}
+
+	octree_res = octree->buildSGGXTree(octree_params.max_tree_depth, 1, mesh);
+	std::cout << "Finished building octree" << std::endl;
+	
 	
 	if (!octree_res) {
 		std::cout << "Error, failing at attempting to build octree" << std::endl;
