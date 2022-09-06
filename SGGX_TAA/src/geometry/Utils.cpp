@@ -12,7 +12,6 @@ void make_flat_shaded(std::vector<float>& vertices,
 	std::vector<int> face_material_indices,
 	Mesh_Object_t& target) {
 
-	std::map<unsigned int, std::vector<unsigned int>> tex_map;
 	int max_index = 0;
 	target.lower = glm::vec3(INFINITY);
 	target.higher = glm::vec3(-INFINITY);
@@ -54,8 +53,6 @@ void make_flat_shaded(std::vector<float>& vertices,
 
 		target.tex_coords.push_back(tex_coords[2 * indices[i].texcoord_index]);
 		target.tex_coords.push_back(tex_coords[2 * indices[i].texcoord_index + 1]);
-
-		tex_map[indices[i].vertex_index].push_back(indices[i].texcoord_index);
 
 		target.indices.push_back(i);
 		if (writeMaterialIndices) target.face_material_indices.push_back(face_material_indices[i / 3]);
@@ -163,7 +160,6 @@ bool build_Obj_Octree(Mesh_Object_t& source, Octree &tree, size_t max_depth)
 
 	return true;
 }
-
 
 bool loadObjMesh(std::string& model_path, std::string& model_name, Mesh_Object_t& target, const ShadingType shadingType) {
 	std::string path = model_path + model_name + ".dat";
@@ -577,6 +573,20 @@ bool calculateClampedBarycentricCoordinates(glm::vec3 a, glm::vec3 b, glm::vec3 
 
 	return true;
 }
+
+float createHaltonSequence(size_t index, int base) {
+	float f = 1;
+	float r = 0;
+	int current = index;
+	do {
+		f = f / base;
+		r = r + f * (current % base);
+		current = glm::floor(current / base);
+	} while (current > 0);
+
+	return r;
+}
+
 
 bool triangleBoxIntersection(AABB box, Triangle tri)
 {

@@ -17,7 +17,19 @@ SceneController::~SceneController()
 
 bool SceneController::init()
 {
+	CameraPath path;
 
+	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 0), glm::vec3(0, 0, 0) }, 0);
+	m_cameraPath.addKeyframe({ glm::vec3(0, 0, 10), glm::vec3(0, 0, 0) }, 180);
+	m_cameraPath.addKeyframe({ glm::vec3(-10, 0, 0), glm::vec3(0, 0, 0) }, 360);
+	m_cameraPath.addKeyframe({ glm::vec3(0, 0, -10), glm::vec3(0, 0, 0) }, 540);
+	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 0), glm::vec3(0, 0, 0) }, 720);
+
+	m_cameraPath.setFrontKeyframe({ glm::vec3(0, 0, -10), glm::vec3(0, 0, 0) });
+	m_cameraPath.setBackKeyframe({ glm::vec3(0, 0, 10), glm::vec3(0, 0, 0) });
+
+	camera_params.min_frame = m_cameraPath.getMinFrame();
+	camera_params.max_frame = m_cameraPath.getMaxFrame();
 
 	/*
 	sceneLights.push_back(std::make_shared<Light>(glm::vec3(10, 0, 0), glm::vec3(1, 1, 1)));
@@ -144,6 +156,8 @@ void SceneController::updateModels()
 
 void SceneController::updateCamera()
 {
+	updateCameraPathState(camera_params.doCameraPath);
+
 	float dist = camera_params.camera_dist * camera_params.camera_dist;
 
 	float cos_theta = glm::cos(camera_params.cameraPos[0]);
@@ -155,23 +169,45 @@ void SceneController::updateCamera()
 	const glm::vec3 default_view_dir = glm::vec3(0, 0, -1);
 
 	glm::mat4 rotateFlatMatrix = glm::rotate(camera_params.cameraPos[0], default_up);
-	
+
 	glm::vec4 flatSphereCameraPos = rotateFlatMatrix * glm::vec4(default_view_dir, 0);;
 
 
-	glm::vec3 rotateAxis = glm::cross(glm::vec3(0, 1, 0), 
+	glm::vec3 rotateAxis = glm::cross(glm::vec3(0, 1, 0),
 		glm::vec3(flatSphereCameraPos.x, flatSphereCameraPos.y, flatSphereCameraPos.z));
-	
+
 	glm::mat4 rotateMatrix = glm::rotate(camera_params.cameraPos[1], rotateAxis);
 
 	glm::vec4 h_camera_pos = rotateMatrix * flatSphereCameraPos;
-	glm::vec4 h_up = rotateMatrix * glm::vec4(default_up, 1);
-	glm::vec3 lookAt = glm::vec3(camera_params.lookAtPos[0], camera_params.lookAtPos[1], camera_params.lookAtPos[2]);
-	glm::vec3 cameraPos = lookAt + dist * glm::vec3(h_camera_pos.x, h_camera_pos.y, h_camera_pos.z);
+	glm::vec4 h_up;
+	glm::vec3 lookAt;
+	glm::vec3 cameraPos;
+	
+	lookAt = glm::vec3(camera_params.lookAtPos[0], camera_params.lookAtPos[1], camera_params.lookAtPos[2]);
+	if (camera_params.doCameraPath) {
+		Keyframe kf = m_cameraPath.interpolateKeyframe(camera_params.current_frame);
+		cameraPos = kf.position;
+		glm::vec3 view_dir = glm::normalize(lookAt - cameraPos);
+		float angle = glm::asin(view_dir.y);
+		glm::vec3 axis = glm::cross(default_up, view_dir);
+		glm::mat4 rotateMatrix = glm::rotate(angle, axis);
+
+		h_up = rotateMatrix * glm::vec4(default_up, 0);
+		
+		if (camera_params.autoplay && ++camera_params.current_frame > m_cameraPath.getMaxFrame()) {
+			camera_params.current_frame = m_cameraPath.getMinFrame();
+		}
+	}
+	else {
+		h_up = rotateMatrix * glm::vec4(default_up, 1);
+		cameraPos = lookAt + dist * glm::vec3(h_camera_pos.x, h_camera_pos.y, h_camera_pos.z);
+
+	}
+
 	camera.setUpVector(glm::vec3(h_up.x, h_up.y, h_up.z));
 	camera.setPosition(cameraPos);
 	camera.setLookAt(lookAt);
-	
+
 	if (camera_params.rotateAzimuth) camera_params.cameraPos[0] += camera_params.angle_speed;
 	if (camera_params.rotatePolar) camera_params.cameraPos[1] += camera_params.angle_speed;
 
@@ -179,6 +215,7 @@ void SceneController::updateCamera()
 
 	camera_params.cameraPos[1] = camera_params.cameraPos[1] > glm::pi<float>() ? -glm::pi<float>() : camera_params.cameraPos[1];
 	//std::cout << "angleY: " << angleY << std::endl;
+
 
 	glm::mat4 projection_matrix = glm::perspective(camera_params.fov, ((float)parameters.windowWidth) / parameters.windowHeight, 0.01f, 1000.0f);
 	renderer.setProjection(projection_matrix);
@@ -230,6 +267,18 @@ void SceneController::reloadShaders()
 void SceneController::reloadOctreeVis()
 {
 	activeObject->initOctree();
+}
+
+void SceneController::updateCameraPathState(bool state)
+{
+	if (camera_params.doCameraPath == state) return;
+	if (state) {
+		camera_params.doCameraPath = true;
+		camera_params.current_frame = m_cameraPath.getMinFrame();
+	}
+	else {
+		camera_params.doCameraPath = false;
+	}
 }
 
 bool SceneController::updateRayMarchQuad()

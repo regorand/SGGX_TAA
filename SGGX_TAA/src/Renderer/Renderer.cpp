@@ -1,4 +1,5 @@
 ﻿#include "Renderer.h"
+#include "../geometry/Utils.h"
 
 Renderer::Renderer()
 {
@@ -8,21 +9,34 @@ Renderer::Renderer()
 	m_horizontal_view_port_size = data[2];
 	m_vertical_view_port_size = data[3];
 
-	size_t buf_size = 4 * sizeof(float) * m_horizontal_view_port_size * m_vertical_view_port_size;
-	float* tex_coords_buffer = new float[buf_size];
+	// this should always be a power of 6, since those retain nice properties 
+	// of the halton sequence for loop arounds
+	const size_t halton_count = 36; 
 
-	memset(tex_coords_buffer, 0x3f800000, buf_size);
+	m_halton_vectors.resize(halton_count);
+	for (size_t i = 0; i < halton_count; i++) {
+		// m_halton_vectors[i] = glm::vec2(createHaltonSequence(i + 1, 2), createHaltonSequence(i + 1, 3));
+		m_halton_vectors[i] = glm::vec2(createHaltonSequence(i + 1, 2), createHaltonSequence(i + 1, 3)) - glm::vec2(0.5);
+	}
+	const unsigned int history_buffer_target = 4;
+	const unsigned int rejection_buffer_target = 5;
 
-	tex_coords_buffer[0] = 1;
-	tex_coords_buffer[1] = 0;
-	tex_coords_buffer[2] = 1;
-	tex_coords_buffer[3] = 1;
+	const unsigned int history_texture_target = 0;
+	const unsigned int rejection_texture_target = 1;
 
-	const unsigned int tex_buf_target = 4;
 
-	m_bufferTexture = std::make_shared<TextureBuffer>(tex_coords_buffer, buf_size, tex_buf_target);
-
-	delete tex_coords_buffer;
+	
+	size_t history_buffer_size = 4 * sizeof(float) * m_horizontal_view_port_size * m_vertical_view_port_size;;
+	float* history_buffer = new float[history_buffer_size];
+	memset(history_buffer, 0, history_buffer_size);
+	m_historyBuffer = std::make_shared<TextureBuffer>(history_buffer, history_buffer_size, history_buffer_target, history_texture_target, GL_RGBA32F);
+	delete history_buffer;
+	
+	size_t rejection_buffer_size = 4 * sizeof(uint32_t) * m_horizontal_view_port_size * m_vertical_view_port_size;
+	uint32_t* rejection_buffer = new uint32_t[rejection_buffer_size];
+	memset(rejection_buffer, 0, rejection_buffer_size);
+	m_rejectionBuffer = std::make_shared<TextureBuffer>(rejection_buffer, rejection_buffer_size, rejection_buffer_target, rejection_texture_target, GL_RGBA32UI);
+	delete rejection_buffer;
 }
 
 void Renderer::render(RasterizationObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights)
@@ -82,6 +96,7 @@ void Renderer::render(RasterizationObject* object, Camera& camera, std::vector<s
 
 	GLPrintError();
 	glDrawElements(GL_TRIANGLES, object->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+	m_frameCount++;
 	GLPrintError();
 
 	object->getShader()->unbind();
@@ -111,6 +126,7 @@ void Renderer::renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& v
 
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	m_frameCount++;
 	voxels.unbindBuffers();
 	object->getVertexArray()->unbind();
 	object->getArrayBuffer()->unbind();
@@ -136,6 +152,7 @@ void Renderer::renderOctreeVisualization(RasterizationObject* object, Camera& ca
 
 
 	glDrawElements(GL_LINES, object->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, nullptr);
+	m_frameCount++;
 
 	object->getShader()->unbind();
 	object->getIndexBuffer()->unbind();
@@ -149,7 +166,8 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 	auto shader = object->getOctreeShader();
 	shader->bind();
 
-	m_bufferTexture->bind();
+	m_rejectionBuffer->bind();
+	m_historyBuffer->bind();
 
 	bool bound = octree.bindBuffers();
 	if (bound) {
@@ -178,6 +196,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("vertical_pixels", vertical_pixels);
 
 		shader->setUniform1i("history_buffer", 0);
+		shader->setUniform1i("rejection_buffer", 1);
 
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
 
@@ -186,7 +205,10 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("max_tree_depth", octree.getMaxDepth());
 
 		shader->setUniform1i("min_render_depth", octree_params.min_render_depth);
-		shader->setUniform1i("max_render_depth", octree_params.max_render_depth);
+		// shader->setUniform1i("max_render_depth", octree_params.max_render_depth);
+
+		shader->setUniform1f("render_depth", octree_params.render_depth);
+		shader->setUniform1i("smooth_lod", octree_params.smooth_lod ? 1 : 0);
 
 		shader->setUniform1i("roentgen_denom", octree_params.roentgen_denominator);
 
@@ -197,12 +219,30 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("inner_nodes_size", octree.getInnerSize());
 		shader->setUniform1i("leaves_size", octree.getLeavesSize());
 
+		if (taa_params.jiggle_active) {
+			glm::vec2 jiggle = m_halton_vectors[m_frameCount % 6] * glm::vec2(1.0f / horizontal_pixels, 1.0f / vertical_pixels);
+			shader->setUniform2f("jiggle_offset", jiggle * taa_params.jiggle_factor);
+		} else {
+			shader->setUniform2f("jiggle_offset", glm::vec2(0));
+		}
+
+		shader->setUniform1f("diffuse_parameter", parameters.diffuse_parameter);
+		
+		shader->setUniform1i("taa_active", taa_params.taa_active ? 1 : 0);
+		shader->setUniform1i("history_rejection_active", taa_params.doHistoryRejection ? 1 : 0);
+		shader->setUniform1i("visualize_history_rejection", taa_params.visualizeHistoryRejection ? 1 : 0);
+		shader->setUniform1f("taa_alpha", taa_params.alpha);
+		shader->setUniform1i("history_buffer_depth", taa_params.historyRejectionBufferDepth);
+		shader->setUniform1i("interpolate_alpha", taa_params.interpolate_alpha);
+		shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
+
 		float s1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		float s2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		shader->setUniform1f("seed1", s1);
 		shader->setUniform1f("seed2", s2);
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		m_frameCount++;
 
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
@@ -210,7 +250,8 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 
 	octree.unbindBuffers();
 
-	m_bufferTexture->unbind();
+	m_historyBuffer->unbind();
+	m_rejectionBuffer->unbind();
 
 	object->getVertexArray()->unbind();
 	object->getArrayBuffer()->unbind();

@@ -29,12 +29,13 @@ public:
 	void bind();
 	void unbind();
 	
-
 	bool setUniform1i(const std::string& name, const unsigned int value);
 
 	bool setUniform1f(const std::string& name, const float value);
+	bool setUniform2f(const std::string& name, const glm::vec2& value);
 	bool setUniform3f(const std::string& name, const glm::vec3& value);
 	bool setUniform4f(const std::string &name, const glm::vec4 &value);
+
 	bool setUniformMat4f(const std::string& name, const glm::mat4 &value);
 
 	bool setUniform3fv(const std::string& name, const unsigned int count, const glm::vec3* data);

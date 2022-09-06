@@ -18,11 +18,19 @@ typedef struct camera_params_s {
 
 	bool rotateAzimuth = false;
 	bool rotatePolar = false;
+
+	bool doCameraPath = false;
+	bool autoplay = false;
+	int min_frame = 0;
+	int max_frame = 1;
+	int current_frame = 0;
 } Camera_Params;
 
 typedef struct octree_params_s {
 	int min_render_depth = 0;
-	int max_render_depth = 8;
+	//int max_render_depth = 8;
+	float render_depth = 8;
+	bool smooth_lod = false;
 
 	// At a depth greater than the max buffer size specified in shader (at the time of this writing 32)
 	// undefined behaviour might occur in shader
@@ -32,10 +40,34 @@ typedef struct octree_params_s {
 
 	int num_iterations = 32;
 
+	float roughness = 0.3;
+
 	bool auto_lod = false;
 
 	bool new_building = true;
 } Octree_Params;
+
+typedef struct taa_params_s {
+	bool taa_active = false;
+	bool jiggle_active = false;
+	
+	float alpha = 0.1;
+	
+	bool doHistoryRejection = false; // toggle history rejection, based on octree node hit ?
+	bool visualizeHistoryRejection = false;
+
+	float jiggle_factor = 1;
+	// TODO might be useful/interesting in the future
+
+	float jiggle_limiter = 0; // limit jigglying if it looks bad ?
+
+	int historyRejectionBufferDepth = 1; // Goes from 1 to 4, accept how many past nodes
+	bool interpolate_alpha = false; // Accept even older values in buffer as perfect match or interpolate alpha between set value
+									// and 1 depending on how far ago this node was hit
+	
+
+	int historyParentRejectionLevel = 0;	// 0 wrong value eventually, use higher nodes for history rejection ?
+} TAA_params ;
 
 typedef struct params_s {
 	/* Window */
@@ -50,6 +82,9 @@ typedef struct params_s {
 
 	int min_visualization_depth = 0;
 	int max_visualization_depth = 6;
+
+	float jiggle_intensity = 0.0001;
+	float diffuse_parameter = 0.2;
 
 	bool flat_shade = true;
 
@@ -78,3 +113,5 @@ extern Parameters parameters;
 extern Camera_Params camera_params;
 
 extern Octree_Params octree_params;
+
+extern TAA_params taa_params;

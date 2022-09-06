@@ -60,8 +60,7 @@ void doImGui(SceneController& controller) {
 
 	ImGui::Begin("Rendering Controls");
 
-
-	render_type &current = render_types[parameters.current_render_type_index];
+	render_type& current = render_types[parameters.current_render_type_index];
 	if (parameters.current_render_type_index == parameters.old_render_type_index) {
 		current.current_render_type = parameters.current_shader_output_index;
 	}
@@ -76,10 +75,13 @@ void doImGui(SceneController& controller) {
 	//doCombo("Render Type", parameters.active_render_type, render_types_2);
 	//doCombo("Shader Output Type OLD", parameters.active_shader_output, parameters.active_shader_output_index, shader_output_types);
 	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
+	ImGui::SameLine();
+	ImGui::Checkbox("Do Camera Path", &camera_params.doCameraPath);
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Flat Shade", &parameters.flat_shade);
 	ImGui::SliderInt("Voxel Count", &parameters.voxel_count, 10, 300);
+	ImGui::SliderFloat("SGGX Roughness", &octree_params.roughness, 0, 1);
 	if (loadableObjs.size() > 0) {
 		doCombo("Loadable Obj", parameters.selected_file, loadableObjs);
 	}
@@ -97,44 +99,53 @@ void doImGui(SceneController& controller) {
 
 	float eps = 1e-3;
 
-	ImGui::Begin("Scene Controls");
+	if (camera_params.doCameraPath) {
+		ImGui::Begin("Camera Path Controls");
+		ImGui::SliderInt("Frame", &camera_params.current_frame, camera_params.min_frame, camera_params.max_frame);
+		ImGui::Checkbox("Auto play", &camera_params.autoplay);
+		ImGui::End();
+	}
+	else {
 
-	ImGui::SliderFloat("Camera Dist Root", &camera_params.camera_dist, 0.5f, 30.0f);
-	ImGui::SliderFloat3("Look At", camera_params.lookAtPos, -10.0f, 10.0f);
-	ImGui::SameLine();
-	if (ImGui::Button("reset look at")) {
-		camera_params.lookAtPos[0] = 0;
-		camera_params.lookAtPos[1] = 0;
-		camera_params.lookAtPos[2] = 0;
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("look at object center")) {
-		controller.lookAtObject();
-	}
 
-	ImGui::SliderFloat("Azitmuth Angle", &camera_params.cameraPos[0], 0, glm::two_pi<float>());
-	ImGui::SameLine();
-	ImGui::Checkbox("Rotate Azimuth", &camera_params.rotateAzimuth);
-	ImGui::SameLine();
-	if (ImGui::Button("reset Azimuth")) {
-		camera_params.cameraPos[0] = 0;
-		camera_params.rotateAzimuth = false;
-	}
+		ImGui::Begin("Scene Controls");
+		ImGui::SliderFloat("Camera Dist Root", &camera_params.camera_dist, 0.5f, 30.0f);
+		ImGui::SliderFloat3("Look At", camera_params.lookAtPos, -10.0f, 10.0f);
+		ImGui::SameLine();
+		if (ImGui::Button("reset look at")) {
+			camera_params.lookAtPos[0] = 0;
+			camera_params.lookAtPos[1] = 0;
+			camera_params.lookAtPos[2] = 0;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("look at object center")) {
+			controller.lookAtObject();
+		}
 
-	ImGui::SliderFloat("Polar Angle", &camera_params.cameraPos[1], -glm::pi<float>(), glm::pi<float>()); ImGui::SameLine();
-	ImGui::Checkbox("Rotate Polar", &camera_params.rotatePolar);
-	ImGui::SameLine();
-	if (ImGui::Button("reset polar")) {
-		camera_params.cameraPos[1] = 0;
-		camera_params.rotatePolar = false;
-	}
+		ImGui::SliderFloat("Azitmuth Angle", &camera_params.cameraPos[0], 0, glm::two_pi<float>());
+		ImGui::SameLine();
+		ImGui::Checkbox("Rotate Azimuth", &camera_params.rotateAzimuth);
+		ImGui::SameLine();
+		if (ImGui::Button("reset Azimuth")) {
+			camera_params.cameraPos[0] = 0;
+			camera_params.rotateAzimuth = false;
+		}
 
-	ImGui::SliderFloat("FOV", &camera_params.fov, glm::pi<float>() / 6, glm::pi<float>());
-	ImGui::SameLine();
-	if (ImGui::Button("reset fov")) {
-		camera_params.fov = glm::pi<float>() / 3;
+		ImGui::SliderFloat("Polar Angle", &camera_params.cameraPos[1], -glm::pi<float>(), glm::pi<float>()); ImGui::SameLine();
+		ImGui::Checkbox("Rotate Polar", &camera_params.rotatePolar);
+		ImGui::SameLine();
+		if (ImGui::Button("reset polar")) {
+			camera_params.cameraPos[1] = 0;
+			camera_params.rotatePolar = false;
+		}
+
+		ImGui::SliderFloat("FOV", &camera_params.fov, glm::pi<float>() / 6, glm::pi<float>());
+		ImGui::SameLine();
+		if (ImGui::Button("reset fov")) {
+			camera_params.fov = glm::pi<float>() / 3;
+		}
+		ImGui::End();
 	}
-	ImGui::End();
 
 	// Probably can combine this OCTREE_RENDER_INDEX
 	if (parameters.current_render_type_index == OCTREE_VIS_RENDER_INDEX)
@@ -153,42 +164,37 @@ void doImGui(SceneController& controller) {
 		ImGui::Begin("Octree Controls");
 		ImGui::SliderInt("Max Tree Depth", &octree_params.max_tree_depth, 0, 16);
 
-		ImGui::SliderInt("Min Render Depth", &octree_params.min_render_depth, 0, octree_params.max_render_depth - 1);
-		ImGui::SliderInt("Max Render Depth", &octree_params.max_render_depth, octree_params.min_render_depth + 1, 16);
+		//ImGui::SliderInt("Min Render Depth", &octree_params.min_render_depth, 0, octree_params.max_render_depth - 1);
+		//ImGui::SliderInt("Max Render Depth", &octree_params.max_render_depth, octree_params.min_render_depth + 1, 16);
+		// Level of detail given by how deep we render the tree
+		ImGui::SliderFloat("Level of Detail", &octree_params.render_depth, 0, 16.0f);
+
 
 		ImGui::SliderInt("Number Iterations", &octree_params.num_iterations, 1, 128);
 
 		ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
 		ImGui::Checkbox("Auto LOD", &octree_params.auto_lod);
-		ImGui::Checkbox("New Tree Building", &octree_params.new_building);
+		ImGui::SameLine();
+		ImGui::Checkbox("smooth LOD", &octree_params.smooth_lod);
+		ImGui::SliderFloat("Diffuse Parameter", &parameters.diffuse_parameter, 0, 1);
+
+		ImGui::End();
+
+
+		// TAA Controls
+		ImGui::Begin("TAA Controls");
+		ImGui::SliderFloat("Alpha", &taa_params.alpha, 0.0, 1.0);
+		ImGui::Checkbox("Enable TAA", &taa_params.taa_active);
+		ImGui::Spacing();
+		ImGui::Checkbox("Enable Jiggle", &taa_params.jiggle_active);
+		ImGui::SliderFloat("Slider Jiggle", &taa_params.jiggle_factor, 0, 5);
+		ImGui::Spacing();
+		ImGui::Checkbox("Enable History Rejection", &taa_params.doHistoryRejection);
+		ImGui::Checkbox("Visualize History Rejection", &taa_params.visualizeHistoryRejection);
+		ImGui::SliderInt("History Rejection Buffer Depth", &taa_params.historyRejectionBufferDepth, 1, 4);
+		ImGui::Checkbox("Interpolate alpha", &taa_params.interpolate_alpha);
+		ImGui::SliderInt("History Rejection Parent Level", &taa_params.historyParentRejectionLevel, 0, 10);
 
 		ImGui::End();
 	}
-
-	//ImGui::SliderFloat3("Object Rotation", parameters.rotation, 0, glm::two_pi<float>());
-	/*
-	if (ImGui::Button("Reset Rotation")) {
-		parameters.rotation[0] = 0;
-		parameters.rotation[1] = 0;
-		parameters.rotation[2] = 0;
-	}
-	*/
-
-
-	/*
-	ImGui::SliderFloat("Light: Polar Angle", &parameters.light_direction[0], 0, glm::two_pi<float>());
-	ImGui::SliderFloat("Light: Azimuth Angle", &parameters.light_direction[1], -glm::half_pi<float>(), glm::half_pi<float>());
-	*/
-	/*
-	ImGui::SliderFloat("GGX Parameter", &parameters.ggx_param, 0.1f, 1.0f);
-	ImGui::SliderInt("GGX Samples", &parameters.num_ggx_samples, 1, 100);
-
-	if (ImGui::Button("Toggle Uniform")) parameters.printUniformNotFound = !parameters.printUniformNotFound;
-	ImGui::SameLine();
-	if (ImGui::Button("Toggle AABB Outline")) parameters.showAABBOutline = !parameters.showAABBOutline;
-	*/
-	/*
-	ImGui::SliderFloat("Ray Marching Delta", &parameters.rayMarchDist, 0.005f, 0.1f);
-	ImGui::SliderInt("Ray Marching Max Steps", &parameters.rayMarchMaxSteps, 0.0, 1000);
-	*/
 }

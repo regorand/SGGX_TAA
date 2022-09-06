@@ -50,15 +50,16 @@ typedef struct {
 } obj_leaf_node;
 
 typedef struct {
-	// first 8 bits: x values
-	// second 8 bits: y values
-	// third 8 bits: z values
+	// first 8 bits: x or r values
+	// second 8 bits: y or g values
+	// third 8 bits: z or b values
 	// last 8 bits -> special
 
 
 	// last 8 bits here are density;
 	uint32_t sigmas;
 	uint32_t rs;
+	uint32_t colors;
 
 } sggx_leaf_node;
 
@@ -85,6 +86,14 @@ typedef struct {
 	std::vector<unsigned int> indices;
 } octree_visualization;
 
+typedef struct texture_m {
+	std::string path;
+	unsigned char* buffer;
+	int width;
+	int height;
+	int bytesPerPixel;
+} Texture_s;
+
 typedef struct {
 	glm::vec3 lower;
 	glm::vec3 higher;
@@ -106,6 +115,7 @@ private:
 
 	std::vector<float> m_tree_vertices;
 	std::vector<float> m_tree_normals;
+	std::vector<float> m_tree_texcoords;
 
 	size_t m_max_depth = 0;
 
@@ -115,6 +125,8 @@ private:
 	std::shared_ptr<ShaderStorageBuffer> m_nodes_ssb;
 	std::shared_ptr<ShaderStorageBuffer> m_inner_nodes_ssb;
 	std::shared_ptr<ShaderStorageBuffer> m_leaves_ssb;
+
+	std::vector<Texture_s> m_textures;
 
 public:
 	Octree();
@@ -191,5 +203,7 @@ private:
 		size_t current_depth,
 		size_t min_depth,
 		size_t max_depth);
+
+	glm::vec3 sampleTexture(Texture_s tex, glm::vec2 uv);
 };
 

@@ -91,6 +91,7 @@ bool Loader::loadSceneObjectSynchronous(std::string object_path, SceneObject* sc
 
 	scene_object->setMeshObject(mesh);
 
+
 	/*
 	std::shared_ptr<VoxelGrid> voxels;
 	if (initVoxels(mesh, parameters.voxel_count, voxels)) {

@@ -33,7 +33,7 @@ public:
         std::shared_ptr <IndexBuffer> index_buffer, 
         std::shared_ptr <Shader> shader, 
         glm::mat4 model_matrix,
-        std::vector<Material> materials);
+        std::vector<Material> materials = std::vector<Material>());
     ~RasterizationObject();
 
     void setLocalTransformation(glm::mat4 local_transformation);

@@ -1,13 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-/*
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/transform.hpp>
-*/
-
-
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -23,8 +16,6 @@
 #include "Types.h"
 
 #include "utils/ImGuiUtils.h"
-
-//void doImgGui(SceneController controller);
 
 int main(void)
 {

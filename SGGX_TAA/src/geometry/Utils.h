@@ -13,8 +13,10 @@
 #include "Octree.h"
 // #include "../Renderer/Material.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
-#include "../3rd_party/obj/tiny_obj_loader.h"
+// #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
+//#include "../3rd_party/obj/tiny_obj_loader.h"
+
+#include "../utils/tiny_obj_utils.h"
 
 #include "../3rd_party/std_image/std_image.h"
 
@@ -59,6 +61,8 @@ bool tesselateTriforce(Mesh_Object_t& object, float max_edge_length, int max_ite
 
 bool calculateClampedBarycentricCoordinates(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 p, float& u, float& v, float& w);
 
+// taken from https://www.reddit.com/r/GraphicsProgramming/comments/ko4jqu/my_taa_tutorial/ (26.08.22)
+float createHaltonSequence(size_t index, int base);
 /*
  * implements triangle box intersection test
  * based on https://gdbooks.gitbooks.io/3dcollisions/content/Chapter4/aabb-triangle.html

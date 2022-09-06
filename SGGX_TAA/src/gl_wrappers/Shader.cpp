@@ -131,6 +131,17 @@ bool Shader::setUniform1f(const std::string& name, const float value)
 	return true;
 }
 
+bool Shader::setUniform2f(const std::string& name, const glm::vec2& value)
+{
+	int uniformId = getUniformLocation(name);
+	if (uniformId == -1) {
+		printUniformNotFound(name);
+		return false;
+	}
+	glUniform2f(uniformId, value.x, value.y);
+	return true;
+}
+
 bool Shader::setUniform3f(const std::string& name, const glm::vec3& value)
 {
 	int uniformId = getUniformLocation(name);

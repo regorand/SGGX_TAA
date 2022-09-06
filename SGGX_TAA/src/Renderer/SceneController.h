@@ -7,6 +7,7 @@
 #include "SceneObject.h"
 #include "Renderer.h"
 #include "Camera.h"
+#include "CameraPath.h"
 #include "../gl_wrappers/Texture.h"
 #include "Light.h"
 #include "RayMarchObject.h"
@@ -28,9 +29,13 @@ private:
 	std::string currentlyLoadingPath;
 
 	Renderer renderer;
-	Camera camera;
-	Loader loader;
 
+	Camera camera;
+	CameraPath m_cameraPath;
+	unsigned int m_cameraPathFrame = 0;
+	bool m_cameraPathActive = false;
+
+	Loader loader;
 public:
 	SceneController();
 	~SceneController();
@@ -48,6 +53,8 @@ public:
 
 	void reloadShaders();
 	void reloadOctreeVis();
+
+	void updateCameraPathState(bool state);
 
 private:
 

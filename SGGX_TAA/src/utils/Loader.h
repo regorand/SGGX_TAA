@@ -44,3 +44,4 @@ public:
 	std::shared_ptr<RasterizationObject> registerMeshObject(Mesh_Object_t& source, std::shared_ptr<Shader> shader, glm::mat4 model_matrix);
 };
 
+

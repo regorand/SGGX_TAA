@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Renderer\CameraPath.cpp" />
     <ClCompile Include="src\geometry\Octree.cpp" />
     <ClCompile Include="src\utils\Loader.cpp" />
     <ClCompile Include="src\Renderer\SceneObject.cpp" />
@@ -47,9 +48,12 @@
     <ClCompile Include="src\gl_wrappers\Texture.cpp" />
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
     <ClCompile Include="src\gl_wrappers\TextureBuffer.cpp" />
+    <ClCompile Include="src\utils\tiny_obj_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Renderer\CameraPath.h" />
     <ClInclude Include="src\geometry\Octree.h" />
+    <ClInclude Include="src\utils\tiny_obj_utils.h" />
     <ClInclude Include="src\utils\Loader.h" />
     <ClInclude Include="src\Renderer\SceneObject.h" />
     <ClInclude Include="src\utils\ImGuiUtils.h" />

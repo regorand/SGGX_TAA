@@ -26,7 +26,14 @@ class Renderer
 	unsigned int m_vertical_view_port_size;
 	unsigned int m_horizontal_view_port_size;
 
-	std::shared_ptr<TextureBuffer> m_bufferTexture;
+	size_t m_frameCount = 0;
+
+	std::vector<glm::vec2> m_halton_vectors;
+
+	std::shared_ptr<TextureBuffer> m_historyBuffer;
+
+	// TODO better name ? -> This stores octree node ids, if they dont fit with current -> history rejection
+	std::shared_ptr<TextureBuffer> m_rejectionBuffer;
 public:
 	Renderer();
 	~Renderer() {};

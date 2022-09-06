@@ -222,10 +222,25 @@ bool Octree::buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Objec
 		return false;
 	}
 
+	
+
 	// create single leaf node as root
 	init(mesh_object.lower, mesh_object.higher);
 
 	if (nodes.empty()) return false;
+	TreeBuildParams params = { m_lower, m_higher, maxPointsPerLeaf, 0, max_depth };
+
+	stbi_set_flip_vertically_on_load(1);
+	for (size_t i = 0; i < mesh_object.materials.size(); i++) {
+		Texture_s tex;
+		tex.buffer = nullptr;
+		tex.path = mesh_object.materials[i].diffuse_texname;
+		if (tex.path != "") {
+			tex.buffer = stbi_load(tex.path.c_str(), &tex.width, &tex.height, &tex.bytesPerPixel, 4);
+
+		}
+		m_textures.push_back(tex);
+	}
 
 	uint32_t root_index = 0;
 
@@ -238,10 +253,10 @@ bool Octree::buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Objec
 
 	m_tree_vertices = mesh_object.vertices;
 	m_tree_normals = mesh_object.normals;
+	m_tree_texcoords = mesh_object.tex_coords;
 
 	leaves[index].indices = mesh_object.indices;
 
-	TreeBuildParams params = { m_lower, m_higher, maxPointsPerLeaf, 0, max_depth };
 	sggx_leaf_node dummy_leaf;
 
 	std::vector<unsigned int> indices_copy = mesh_object.indices;
@@ -250,6 +265,14 @@ bool Octree::buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Objec
 
 	m_tree_vertices.clear();
 	m_tree_normals.clear();
+	m_tree_texcoords.clear();
+
+	for (size_t i = 0; i < m_textures.size(); i++) {
+		if (m_textures[i].buffer) {
+			stbi_image_free(m_textures[i].buffer);
+		}
+	}
+
 
 	if (result) {
 		m_max_depth = max_depth;
@@ -295,6 +318,10 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		// can aggregate density without converting it back, because it is only linearly scaled
 		uint32_t density_sum = 0; 
 		glm::vec3 normal = glm::vec3(0);
+		int red = 0;
+		int green = 0;
+		int blue = 0;
+		int color_count = 0;
 		glm::mat3 sggx_mat = glm::mat3(0);
 
 		std::vector<unsigned int> child_indices;
@@ -330,6 +357,10 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 					child_value);
 
 				density_sum += READ_SPECIAL_VALUE_MASK(child_value.sigmas);
+				red += READ_X_VALUE_MASK(child_value.colors);
+				green += READ_Y_VALUE_MASK(child_value.colors);
+				blue += READ_Z_VALUE_MASK(child_value.colors);
+				if (child_value.colors != 0) color_count++;
 				sggx_mat += buildSGGXMatrix(child_value);
 			}
 			std::vector<unsigned int>().swap(indices);
@@ -338,6 +369,12 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			if (!result) return false;
 
 			density_sum /= 8;
+			if (color_count != 0) {
+				red /= color_count;
+				green /= color_count;
+				blue /= color_count;
+			}
+
 			if (density_sum < 0) {
 				int a = 0;
 			}
@@ -349,27 +386,40 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			}
 			writeSGGXMatrix(downscaled, result_sggx_leaf);
 			result_sggx_leaf.sigmas += CONVERT_SPECIAL_VALUE_MASK((uint32_t)(density_sum));
+			result_sggx_leaf.colors = CONVERT_X_VALUE_MASK(red)
+				+ CONVERT_Y_VALUE_MASK(green)
+				+ CONVERT_Z_VALUE_MASK(blue);
 		}
 	}
 	else {
 		size_t depth_diff = m_max_depth - params.depth;
 		float size_factor = 1.0f / (glm::pow(2.0f, depth_diff));
 
-		glm::vec3 normal = glm::vec3(0);
+		glm::vec3 normal(0);
+		glm::vec3 color(0);
+		unsigned int min_index = 10000000;
 		size_t count = 0;
 
 		for (size_t i = 0; i < indices.size(); i+=3) {
-			// TODO here:
-			// get normals for triangle in total and each vertex
-			glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i]);
-			glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 1]);
-			glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * indices[i + 2]);
+			unsigned int i1 = indices[i];
+			unsigned int i2 = indices[i + 1];
+			unsigned int i3 = indices[i + 2];
+
+
+			glm::vec3 v1 = glm::make_vec3(m_tree_vertices.data() + 3 * i1);
+			glm::vec3 v2 = glm::make_vec3(m_tree_vertices.data() + 3 * i2);
+			glm::vec3 v3 = glm::make_vec3(m_tree_vertices.data() + 3 * i3);
 
 			glm::vec3 triangle_plane_normal = glm::normalize(glm::cross(glm::normalize(v2 - v1), glm::normalize(v3 - v1)));
 
-			glm::vec3 n1 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i]);
-			glm::vec3 n2 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i + 1]);
-			glm::vec3 n3 = glm::make_vec3(m_tree_normals.data() + 3 * indices[i + 2]);
+			glm::vec3 n1 = glm::make_vec3(m_tree_normals.data() + 3 * i1);
+			glm::vec3 n2 = glm::make_vec3(m_tree_normals.data() + 3 * i2);
+			glm::vec3 n3 = glm::make_vec3(m_tree_normals.data() + 3 * i3);
+
+			// uv-coords of vertices
+			glm::vec2 uv1 = glm::make_vec2(m_tree_texcoords.data() + 2 * i1);
+			glm::vec2 uv2 = glm::make_vec2(m_tree_texcoords.data() + 2 * i2);
+			glm::vec2 uv3 = glm::make_vec2(m_tree_texcoords.data() + 2 * i3);
 
 			// project voxel center along normal (shortest distance) onto triangle
 			glm::vec3 voxel_center = (params.lower + params.higher) / glm::vec3(2);
@@ -383,7 +433,20 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			float u, v, w;
 			calculateClampedBarycentricCoordinates(v1, v2, v3, projected_point, u, v, w);
 
-			normal += u * n1 + v * n2 + w * n3;
+			unsigned int min_local_index = glm::min(i1, glm::min(i2, i3));
+			if (min_local_index < min_index) {
+				//normal = u * n1 + v * n2 + w * n3;
+				min_index = min_local_index;
+			}
+			normal += glm::normalize(u * n1 + v * n2 + w * n3);
+
+			glm::vec2 uv = u * uv1 + v * uv2 + w * uv3;
+
+			if (m_textures.size() > 0) {
+				if (m_textures[0].buffer) {
+					color = sampleTexture(m_textures[0], uv);
+				}
+			}
 
 			// idea only take one normal ?
 
@@ -397,6 +460,10 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 
 			glm::mat3 SGGX_mat = buildSGGXMatrix(normal);
 			writeSGGXMatrix(SGGX_mat, result_sggx_leaf);
+
+			result_sggx_leaf.colors = CONVERT_X_VALUE_MASK((int) (color.r * 255))
+				+ CONVERT_Y_VALUE_MASK((int) (color.g * 255))
+				+ CONVERT_Z_VALUE_MASK((int) (color.b * 255));
 		}
 
 		// result_sggx_leaf.normal[0] = normal.x;
@@ -839,7 +906,7 @@ bool Octree::cond_tesselate_tri(float max_edge_length,
 
 glm::mat3 Octree::buildSGGXMatrix(glm::vec3 normal)
 {
-	float squared_roughness = parameters.roughness * parameters.roughness;
+	float squared_roughness = octree_params.roughness * octree_params.roughness;
 
 	float x_sq = normal.x * normal.x;
 	float y_sq = normal.y * normal.y;
@@ -950,6 +1017,78 @@ bool Octree::buildNodeVisualization(octree_visualization& vis, octree_node node,
 	}
 
 	return result;
+}
+
+glm::vec3 Octree::sampleTexture(Texture_s tex, glm::vec2 uv)
+{
+	if (!tex.buffer) return glm::vec3(0);
+	
+	float dist = 0.01;
+
+	float u_lower = uv.x - dist;
+	if (u_lower < 0) u_lower += std::ceil(std::abs(u_lower));
+	u_lower = u_lower - (long)u_lower;
+
+	float u_upper = uv.x + dist;
+	if (u_upper < 0) u_upper += std::ceil(std::abs(u_upper));
+	u_upper = u_upper - (long)u_upper;
+
+	int x_coord_lower = (int)(u_lower * tex.width);
+	int x_coord_upper = (int)(u_upper * tex.width);
+
+	if (x_coord_lower > x_coord_upper) x_coord_lower = x_coord_upper;
+
+	float v_lower = uv.y - dist;
+	if (v_lower < 0) v_lower += std::ceil(std::abs(v_lower));
+	v_lower = v_lower - (long)v_lower;
+
+	float v_upper = uv.y + dist;
+	if (v_upper < 0) v_upper += std::ceil(std::abs(v_upper));
+	v_upper = v_upper - (long)v_upper;
+
+	int y_coord_lower = (int)(v_lower * tex.width);
+	int y_coord_upper = (int)(v_upper * tex.width);
+
+	if (y_coord_lower > y_coord_upper) y_coord_lower = y_coord_upper;
+
+	glm::vec3 color(0);
+	int count = 0;
+	for (size_t x = x_coord_lower; x <= x_coord_upper; x++) {
+		for (size_t y = y_coord_lower; y <= y_coord_upper; y++) {
+			int index = 4 * (y * tex.width + x);
+
+			unsigned int r = *(tex.buffer + index);
+			unsigned int g = *(tex.buffer + index + 1);
+			unsigned int b = *(tex.buffer + index + 2);
+
+			color += glm::vec3(((float)r) / 255, ((float)g) / 255, ((float)b) / 255);
+			count++;
+		}
+	}
+	return color / glm::vec3(count);
+
+	/*
+	float u = uv.x;
+	if (u < 0) u += std::ceil(std::abs(u));
+	u = u - (long)u;
+
+	float v = uv.y;
+	if (v < 0) v += std::ceil(std::abs(v));
+	v = v - (long)v;
+
+	int x_coord = (int)(u * tex.width);
+	int y_coord = (int)(v * tex.height);
+
+	int index = 4 * (y_coord * tex.width + x_coord);
+	//int index = x_coord * tex.height+ y_coord;
+
+	unsigned int r = *(tex.buffer + index);
+	unsigned int g = *(tex.buffer + index + 1);
+	unsigned int b = *(tex.buffer + index + 2);
+
+	return glm::vec3(((float)r) / 255, ((float)g) / 255, ((float)b) / 255);
+	*/
+
 }
 
 bool Octree::getVisualization(octree_visualization& vis, size_t min_depth, size_t max_depth)
