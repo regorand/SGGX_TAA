@@ -545,11 +545,11 @@ void main() {
 
     AABB octreeBound = AABB(lower, higher);
     // int max_depth = max_render_depth;
-    int max_depth = int(ceil(render_depth));
     // use this to render, get parent from stack when rendering, revaluate sggx for both, interpolate linearly
 
     vec3 ray_base = camera_pos;
-    vec3 view_direction = normalize(world_pos.xyz - camera_pos);
+    vec3 view_vector = world_pos.xyz - camera_pos;
+    vec3 view_direction = normalize(view_vector);
 
     float eps = 1e-4;
     vec3 ray_eps = view_direction * eps;
@@ -558,17 +558,39 @@ void main() {
 
     Intersection base_intersection = getBoxIntersection(pixel_ray, octreeBound);
 
+    int max_depth = int(ceil(render_depth));
+    float smooth_lod_factor = fract(render_depth);  
+    if (auto_lod == 1) {
+        float target_leaf_size = (vertical_pixel_size * base_intersection.t_near) / length(view_vector);
+        float base_leaf_size = (higher.x - lower.x) / pow(2, max_tree_depth);
+        float LoD = max_tree_depth;
+        if (target_leaf_size > base_leaf_size) {
+            float render_offset = log2(target_leaf_size) - log2(base_leaf_size);
+
+            LoD = max(1, LoD - render_offset);
+
+            max_depth = int(ceil(LoD));
+            smooth_lod_factor = fract(LoD); // TODO make sure this doesn't work when going to too deep levels
+            
+        }
+        
+        // Visualize auto lod
+        // out_color = vec4(vec3(LoD) / 10, 1);
+        // return;
+    }
+
+    if (max_depth > max_tree_depth) {
+        smooth_lod_factor = 1;
+    }
+
     float base_factor = step_0(base_intersection.t_far - base_intersection.t_near);    
     if (base_factor == 0) {
         discard;
     }
 
-    if (auto_lod == 1) {
-        //float leaf_size = (upper.x - lower.x) / pow(2, max_tree_depth);
-        int dist_factor = int(base_intersection.t_far / 25);
-        max_depth -= dist_factor;
-        max_depth = max(min_render_depth + 1, max_depth);
-    }
+
+    
+
     vec3 position = ray_base + base_intersection.t_near * view_direction + ray_eps;
 
     vec3 outline_color = (position - lower) / (higher - lower);
@@ -577,11 +599,7 @@ void main() {
 
     float roentgen_count = 0;
 
-    int pixel_samples = 1;
-
-    
     uint hit_leaf_index = 0;
-
 
     float upFactor = 0;
     float tangentFactor = 0;
@@ -666,27 +684,17 @@ void main() {
                             parent_color *= (1 - diffuse_parameter);
                             parent_color += diffuse_parameter * parent_sggx_color;
 
-                            float factor = fract(render_depth);
+                            
 
-                            color = factor * color + (1 - factor) * parent_color;
+                            color = smooth_lod_factor * color + (1 - smooth_lod_factor) * parent_color;
                         }
                     }
 
                 }
-                
-
-
-                //float length_base = length(running_aabb.upper - running_aabb.lower);
-                float length_base = abs(running_aabb.upper.x - running_aabb.lower.x);
-                float Intersection_length = leaf_intersection.t_far - leaf_intersection.t_near;
-                float length_factor = min(Intersection_length / length_base, 1);
-
                 // sggx_sum_color += remaining_contribution * length_factor * color;
                 sggx_sum_color += color;
                 hit_leaf_index = leaf_index;
 
-                // remaining_contribution *= (1 - length_factor);
-                //if (remaining_contribution < 0.01) break;
                 break;
             }
         }
@@ -708,7 +716,6 @@ void main() {
 
     // Calculate output Color after traversal 
     if (output_type == 0) {
-        sggx_sum_color /= pixel_samples;
         out_color = vec4(sggx_sum_color, 1);
     } else if (output_type == 1) {
         //out_color = vec4(float(count) / 50 * vec3(1, 0, 0.5), 1);
