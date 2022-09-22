@@ -9,7 +9,7 @@ private:
 	unsigned int m_texBufGlId;
 	unsigned int m_bufObjGlId;
 public:
-	TextureBuffer(void* data, unsigned int size, unsigned int target, unsigned int texture_target, size_t data_type, bool dynamic = false);
+	TextureBuffer(void* data, unsigned int size, unsigned int texture_target, size_t data_type, bool dynamic = false);
 	~TextureBuffer();
 
 	void bind();

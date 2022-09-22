@@ -66,6 +66,7 @@ uniform int auto_lod;
 uniform int roentgen_denom;
 
 uniform float diffuse_parameter;
+uniform int interpolate_voxels;
 
 uniform int output_type;
 uniform float AABBOutlineFactor;
@@ -79,26 +80,26 @@ uniform int vertical_pixels;
 uniform int num_iterations;
 
 // TAA Uniforms
-
-uniform int taa_active;
-uniform float taa_alpha;
-
-uniform int history_rejection_active;
-uniform int visualize_history_rejection;
-
-uniform int history_buffer_depth;
-uniform int interpolate_alpha;
 uniform int history_parent_level;
 
 // uniform samplerBuffer history_buffer;
+layout(rgba32f) uniform imageBuffer render_buffer;
 layout(rgba32f) uniform imageBuffer history_buffer;
 layout(rgba32ui) uniform uimageBuffer rejection_buffer;
+layout(r32ui) uniform uimageBuffer node_hit_buffer;
+layout(rgba32f) uniform imageBuffer space_hit_buffer;
+layout(rgba32f) uniform imageBuffer motion_vector_buffer;
+layout(r32f) uniform imageBuffer lod_diff_buffer;
 
 uniform vec3 lower;
 uniform vec3 higher;
 //uniform float AABBOutlineFactor;
 
 uniform vec3 camera_pos;
+uniform vec3 camera_view_dir;
+uniform mat4 view_matrix;
+
+uniform vec3 up_vector;
 
 const vec3 light_dir = vec3(-1, 1, 0);
 
@@ -108,6 +109,10 @@ float step_0(float a) {
 
 vec3 step_0(vec3 a) {
     return max(sign(a), 0);
+}
+
+float clamped_dot(vec3 v1, vec3 v2) {
+    return max(dot(v1, v2), 0);
 }
 
 float rand(vec2 co)
@@ -122,25 +127,19 @@ struct Stack {
 };
 
 uint top(Stack stack) {
-    if (stack.current_size > 0) {
-        return stack.buf[stack.current_size - 1];
-    }
-    return 0;
+    return stack.buf[stack.current_size - 1];
 }
 
 uint pop(inout Stack stack) {
-    if (stack.current_size > 0) {
-        stack.current_size--;
-        return stack.buf[stack.current_size];
-    }
-    return 0;
+    stack.current_size--;
+    stack.current_size = max(0, stack.current_size);
+    return stack.buf[stack.current_size];
 }
 
 void push(inout Stack stack, uint value) {
-    if (stack.current_size < max_stack_size) {
-        stack.buf[stack.current_size] = value;
-        stack.current_size++;
-    }
+    stack.buf[stack.current_size] = value;
+    stack.current_size++;
+    stack.current_size = min(31, stack.current_size);
 }
 
 bool hasCapacity(Stack stack) {
@@ -153,9 +152,8 @@ bool hasElement(Stack stack) {
 
 // cherry picks an element from a stack by an index
 uint cherry_pick(Stack stack, int index) {
-    if (index > 0 && index < stack.current_size) {
-        return stack.buf[index];
-    }
+    uint local_index = min(31, index);
+    return stack.buf[local_index];
 }
 
 struct AABB {
@@ -169,25 +167,19 @@ struct AABBStack {
 };
 
 AABB top(AABBStack stack) {
-    if (stack.current_size > 0) {
-        return stack.buf[stack.current_size - 1];
-    }
-    return AABB(vec3(0), vec3(1));
+    return stack.buf[stack.current_size - 1];
 }
 
 AABB pop(inout AABBStack stack) {
-    if (stack.current_size > 0) {
-        stack.current_size--;
-        return stack.buf[stack.current_size];
-    }
-    return AABB(vec3(0), vec3(1));
+    stack.current_size--;
+    stack.current_size = max(0, stack.current_size);
+    return stack.buf[stack.current_size];
 }
 
 void push(inout AABBStack stack, AABB value) {
-    if (stack.current_size < max_stack_size) {
-        stack.buf[stack.current_size] = value;
-        stack.current_size++;
-    }
+    stack.buf[stack.current_size] = value;
+    stack.current_size++;    
+    stack.current_size = min(31, stack.current_size);
 }
 
 bool hasCapacity(AABBStack stack) {
@@ -216,35 +208,50 @@ vec3 getAABBCenter(AABB aabb) {
 
 
 Intersection getBoxIntersection(Ray ray, AABB aabb) {
-    float t_near_tmp = -1;
-    float t_far_tmp = 100000;
+    float t_near_tmp    = -100000;
+    float t_far_tmp     =  100000;
 
     int near_dimension_index = -1;
     int far_dimension_index = -1;
 
+
+
+
     for (int i = 0; i < 3; i++) {
         float d = ray.ray_dir[i];
-        if (abs(d) > 1e-6) {
+        // float div by 0 should give infinity, may need to make sure t1 is not always infinity
+        // might not be a problem since in that case t_near is probably going to be farther than t_far meaning no intersection
+        //if (abs(d) > 1e-6) {
+        //}
             float t1 = (aabb.lower[i] - ray.ray_origin[i]) / d;
             float t2 = (aabb.upper[i] - ray.ray_origin[i]) / d;
+
+            /*
             if (t1 > t2) {
                 float tmp = t2;
                 t2 = t1;
                 t1 = tmp;
             }
+            */
+            float tmp = max(t1, t2);
+            t1 = min(t1, t2);
+            t2 = tmp;
+
+
             // Probably can do an if here, and save dimension index that gave current values in Intersection
             // That way we already know which dimension we exit again
-            if (t1 > t_near_tmp) {
-                t_near_tmp  = t1;
-                near_dimension_index = i;
-            }
-            if (t2 < t_far_tmp) {
-                t_far_tmp = t2;
-                far_dimension_index = i;
-            }
-            //t_near_tmp = max(t_near_tmp, t1);
-            //t_far_tmp = min(t_far_tmp, t2);
-        }
+
+            // 1 if t1 > t_near_tmp, 0 otherwise
+            float t1_factor = step_0(t1 - t_near_tmp);
+            float one_minus_t1_factor = 1 - t1_factor;
+            t_near_tmp = t1_factor * t1 + one_minus_t1_factor * t_near_tmp;
+            near_dimension_index = int(t1_factor * i + one_minus_t1_factor * near_dimension_index);
+            
+            float t2_factor = step_0(t_far_tmp - t2);
+            float one_minus_t2_factor = 1 - t2_factor;
+            t_far_tmp = t2_factor * t2 + one_minus_t2_factor * t_far_tmp;
+            far_dimension_index = int(t2_factor * i + one_minus_t2_factor * far_dimension_index);
+
     }
     return Intersection(t_near_tmp, t_far_tmp, near_dimension_index, far_dimension_index);
 }
@@ -290,17 +297,6 @@ void upScaleAABB(inout AABB aabb, uint inner_index) {
     aabb.upper = new_upper;
 }
 
-/*
-void get_parent_AABB(inout AABB box, uint inner_index) {
-    vec3 factors = get_bound_factors(inner_index);
-    vec3 one_minus_factors = 1 - factors;
-    vec3 new_lower = one_minus_factors * box.lower + factors * (2 * box.lower - box.upper);
-    vec3 new_upper = factors * box.upper + one_minus_factors * (2 * box.upper - box.lower);
-    box.lower = new_lower;
-    box.upper = new_upper;
-}
-*/
-
 bool traverseDownToLeaf(vec3 position, 
     int max_depth,
     inout int current_depth,
@@ -308,9 +304,9 @@ bool traverseDownToLeaf(vec3 position,
     inout AABB running_aabb,
     inout Stack parent_stack,
     inout AABBStack aabb_stack) {
-    if (node_index >= nodes_size) { 
-        return false;
-    }
+    // if (node_index >= nodes_size) { 
+    //     return false;
+    // }
     octree_node_s current_node = nodes_data[node_index];
     uint index = NODE_INDEX(current_node.type_and_index);
     uint type = NODE_TYPE(current_node.type_and_index);
@@ -318,28 +314,28 @@ bool traverseDownToLeaf(vec3 position,
     while (type == INNER_NODE_TYPE && current_depth < max_depth) {
         uint inner_index = get_inner_index(running_aabb, position);
 
-        if (!hasCapacity(parent_stack)) {
-            return false;
-        }
-        if (!hasCapacity(aabb_stack)) {
-            return false;
-        }
+        // if (!hasCapacity(parent_stack)) {
+        //     return false;
+        // }
+        // if (!hasCapacity(aabb_stack)) {
+        //     return false;
+        // }
         current_depth++;
         push(parent_stack, node_index);
         push(aabb_stack, AABB(running_aabb.lower, running_aabb.upper));
 
         downScaleAABB(running_aabb, inner_index);
 
-        if (index >= inner_nodes_size) {
-            return false;
-        }
+        // if (index >= inner_nodes_size) {
+        //     return false;
+        // }
 
         inner_node_s inner_node = inner_nodes_data[index];
         node_index = inner_node.node_indices[inner_index];
 
-        if (node_index >= nodes_size) {
-            return false;
-        }
+        // if (node_index >= nodes_size) {
+        //     return false;
+        // }
         octree_node_s current_node = nodes_data[node_index];
         index = NODE_INDEX(current_node.type_and_index);
         type = NODE_TYPE(current_node.type_and_index);
@@ -402,15 +398,6 @@ void getSGGXFactors(leaf_node_s leaf, inout float Sxx, inout float Syy, inout fl
     Sxy = r_xy * sigma_x * sigma_y;
     Sxz = r_xz * sigma_x * sigma_z;
     Syz = r_yz * sigma_y * sigma_z;
-}
-
-
-vec4 doSGGX() {
-    return vec4(1);
-}
-
-float clamped_dot(vec3 v1, vec3 v2) {
-    return max(dot(v1, v2), 0);
 }
 
 void buildOrthonormalBasis(inout vec3 omega_1, inout vec3 omega_2, const vec3 omega_3)
@@ -512,40 +499,144 @@ vec3 evaluateSggx(leaf_node_s leaf, vec3 ray_dir, vec3 color) {
     running_factor /= num_iterations;
 
     return color * running_factor;
+}
 
-    /*
-    int num_point_samples = 1;
-    vec3 out_dir = - ray_dir;
+vec3 evaluateLeaf(leaf_node_s leaf, vec3 ray_dir) {
+    vec3 sggx_color = vec3(1);
 
-    float sum = 0;
-    for (int i = 0; i < num_point_samples; i++) {
-        sum += clamped_dot(sample_direction(1, normal), out_dir);
+    uint r = READ_X_VALUE_MASK(leaf.color);
+    uint g = READ_Y_VALUE_MASK(leaf.color);
+    uint b = READ_Z_VALUE_MASK(leaf.color);
+
+    int factor = int(r != 0 || g != 0 || b != 0);
+    sggx_color = factor * vec3(float(r) / 255, float(g) / 255, float(b) / 255) + (1 - factor) * sggx_color;
+    
+    vec3 color = evaluateSggx(leaf, ray_dir, sggx_color);
+    color *= (1 - diffuse_parameter);
+    color += diffuse_parameter * sggx_color;
+    return color;
+}
+
+vec3 evaluateNode(uint node_index, vec3 ray_dir, inout bool isEmpty) {
+    uint leaf_index = nodes_data[node_index].leaf_data_index;
+
+        leaf_node_s leaf = leaves_data[leaf_index];
+
+        float density = float(READ_SPECIAL_VALUE_MASK(leaf.sigmas)) / 255;
+        isEmpty = abs(density) > 1e-3;
+        int factor = int(output_type == 0 && isEmpty);
+        // if (factor == 1) {
+        //     return evaluateLeaf(leaf, ray_dir);
+        // }
+        return factor * evaluateLeaf(leaf, ray_dir) + (1 - factor) * vec3(0);
+        //if ()) {
+        //}
+    //if (leaf_index < leaves_size) {
+    //} else {
+    //    isEmpty = true;
+    //    return vec3(0);
+    //}
+}
+
+
+vec3 interpolateVoxelColor(vec3 ray_dir,
+        vec3 ray_origin,
+        Intersection base_intersection,
+        vec3 voxel_color, 
+        int max_depth,
+        int current_depth,
+        uint node_index,
+        AABB running_aabb,
+        Stack parent_stack,
+        AABBStack aabb_stack) {
+
+    vec3 tangent_view_plane = normalize(cross(ray_dir, up_vector));
+
+    vec3 base_node_pos = ray_origin + ray_dir * ((base_intersection.t_far + base_intersection.t_near) / 2);
+
+    Ray up_ray = Ray(base_node_pos, up_vector);
+    Intersection up_intersect = getBoxIntersection(up_ray, running_aabb);
+
+    Ray tangent_ray = Ray(base_node_pos, tangent_view_plane);
+    Intersection tangent_intersect = getBoxIntersection(tangent_ray, running_aabb);
+
+    vec3 vert_interp_dir = up_vector * sign(abs(up_intersect.t_near) - abs(up_intersect.t_far));
+    vec3 horiz_interp_dir = tangent_view_plane * sign(abs(tangent_intersect.t_near) - abs(tangent_intersect.t_far));
+
+    float eps = 1e-4;
+    vec3 target_up = vec3(0);
+    float up_factor = 0;
+    if (abs(up_intersect.t_near) < abs(up_intersect.t_far)) {
+        up_factor = abs(up_intersect.t_near) / abs(up_intersect.t_far);
+        target_up = base_node_pos + (up_intersect.t_near - eps) * up_vector;
+    } else {
+        up_factor = abs(up_intersect.t_far)  / abs(up_intersect.t_near);
+        target_up = base_node_pos + (up_intersect.t_far + eps) * up_vector;
     }
-    sum /= PI * num_point_samples;
 
-    //mat3 sggx_matrix = buildSGGXMatrix(leaf);
-    return sum * vec3(1);
-    */
+    vec3 target_tangent = vec3(0);
+    vec3 tangent_offset = vec3(0);
+    float tangent_factor = 0;
+    if (abs(tangent_intersect.t_near) < abs(tangent_intersect.t_far)) {
+        up_factor = abs(tangent_intersect.t_near) / abs(tangent_intersect.t_far);
+        target_tangent = base_node_pos + (tangent_intersect.t_near - eps) * tangent_view_plane;
+    } else {
+        up_factor = abs(tangent_intersect.t_far)  / abs(tangent_intersect.t_near);
+        tangent_offset = (tangent_intersect.t_far + eps) * tangent_view_plane;
+        target_tangent = base_node_pos + tangent_offset;
+    }
+
+    vec3 target_up_tangent = target_up + tangent_offset;
+
+    up_factor = (up_factor) / 2;
+    tangent_factor = (tangent_factor) / 2;
+
+    // get up color
+    bool result = traverseUpToParent(target_up, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    result = traverseDownToLeaf(target_up, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    bool dummy_bool;
+    vec3 up_color = evaluateNode(node_index, ray_dir, dummy_bool);
+
+    // get up + tangent color
+    result = traverseUpToParent(target_up_tangent, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    result = traverseDownToLeaf(target_up_tangent, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    vec3 up_tangent_color = evaluateNode(node_index, ray_dir, dummy_bool);
+
+    // get tangent color
+    result = traverseUpToParent(target_up_tangent, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    result = traverseDownToLeaf(target_up_tangent, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
+    if (!result) return voxel_color;
+
+    vec3 tangent_color = evaluateNode(node_index, ray_dir, dummy_bool);
+
+    vec3 interpolated_color_outside = up_factor * up_tangent_color + (1 - up_factor) * tangent_color;
+    vec3 interpolated_color_inside = up_factor * up_color + (1 - up_factor) * voxel_color;
+
+    return tangent_factor * interpolated_color_outside + (1 - tangent_factor) * interpolated_color_inside;
 }
 
 void main() {
-    
-
     out_color = vec4(0);
 
-    if (output_type == 2) {
-        int horizontal_index = int(gl_FragCoord.x);
-        int vertical_index = int(gl_FragCoord.y);
+    int horizontal_index = int(gl_FragCoord.x);
+    int vertical_index = int(gl_FragCoord.y);
+    int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
 
-        int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
+    imageStore(node_hit_buffer, buffer_index, uvec4(0));
+    imageStore(render_buffer, buffer_index, vec4(0));
 
-        out_color = imageLoad(history_buffer, buffer_index);
-        return;
-    }
 
     AABB octreeBound = AABB(lower, higher);
-    // int max_depth = max_render_depth;
-    // use this to render, get parent from stack when rendering, revaluate sggx for both, interpolate linearly
 
     vec3 ray_base = camera_pos;
     vec3 view_vector = world_pos.xyz - camera_pos;
@@ -560,8 +651,11 @@ void main() {
 
     int max_depth = int(ceil(render_depth));
     float smooth_lod_factor = fract(render_depth);  
+
+    float thales_factor = base_intersection.t_near / length(view_vector);
+
     if (auto_lod == 1) {
-        float target_leaf_size = (vertical_pixel_size * base_intersection.t_near) / length(view_vector);
+        float target_leaf_size = vertical_pixel_size * thales_factor;
         float base_leaf_size = (higher.x - lower.x) / pow(2, max_tree_depth);
         float LoD = max_tree_depth;
         if (target_leaf_size > base_leaf_size) {
@@ -578,6 +672,12 @@ void main() {
         // out_color = vec4(vec3(LoD) / 10, 1);
         // return;
     }
+
+    float lod_buffer_value = imageLoad(lod_diff_buffer, buffer_index).r;
+    imageStore(lod_diff_buffer, buffer_index, vec4(0, 0, 0, 0));
+    int discr_lod_diff = int(round(lod_buffer_value));
+    // max_depth = max(1, max_depth - discr_lod_diff);
+    max_depth -= discr_lod_diff;
 
     if (max_depth > max_tree_depth) {
         smooth_lod_factor = 1;
@@ -600,18 +700,13 @@ void main() {
     float roentgen_count = 0;
 
     uint hit_leaf_index = 0;
+    vec3 hit_center_loc = vec3(0);
 
     float upFactor = 0;
     float tangentFactor = 0;
 
     vec3 ray_dir = pixel_ray.ray_dir;
 
-    Intersection outline_intersection = getBoxIntersection(pixel_ray, octreeBound);
-    float factor = step_0(outline_intersection.t_far - outline_intersection.t_near);
-    if (factor == 0) {
-        discard; // TODO do something about taa here ?
-    }
-    // TODO do LOD calculations here
 
     uint parent_buf[max_stack_size];
     Stack parent_stack = Stack(parent_buf, 0);
@@ -622,7 +717,7 @@ void main() {
     AABB running_aabb = AABB(octreeBound.lower, octreeBound.upper);
 
     uint node_index = 0;
-    uint current_depth = 0;
+    int current_depth = 0;
     // Find Leaf at Position
 
     bool result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
@@ -636,6 +731,7 @@ void main() {
         count++;
         roentgen_count += step_0(float(current_depth) - min_render_depth);
         
+        // TODO replace this with new method evaluateNode
         uint leaf_index = nodes_data[node_index].leaf_data_index;
         if (leaf_index < leaves_size) {
             leaf_node_s leaf = leaves_data[leaf_index];
@@ -658,8 +754,20 @@ void main() {
                     color *= (1 - diffuse_parameter);
                     color += diffuse_parameter * sggx_color;
                 
+                    if (interpolate_voxels != 0) {
+                        color = interpolateVoxelColor(ray_dir,
+                            pixel_ray.ray_origin,
+                            base_intersection,
+                            color,
+                            max_depth,
+                            current_depth, 
+                            node_index, 
+                            running_aabb, 
+                            parent_stack,
+                            aabb_stack);
+                    }
 
-                
+
                 if (smooth_lod != 0 && parent_stack.current_size > 0) {
                     uint parent_node = top(parent_stack);
                     uint parent_leaf_index = nodes_data[parent_node].leaf_data_index;
@@ -694,6 +802,7 @@ void main() {
                 // sggx_sum_color += remaining_contribution * length_factor * color;
                 sggx_sum_color += color;
                 hit_leaf_index = leaf_index;
+                hit_center_loc = (running_aabb.lower + running_aabb.upper) / 2;
 
                 break;
             }
@@ -726,62 +835,49 @@ void main() {
     // This renders an outline around the bounding box if AABBOutlineFactor uniform is set to 1
     out_color += AABBOutlineFactor * 0.3 * vec4(outline_color, 1);
 
-    if (taa_active != 0) {
-        int horizontal_index = int(gl_FragCoord.x);
-        int vertical_index = int(gl_FragCoord.y);
-
-        if (history_parent_level > 0) {
-            int stack_node_index = max(parent_stack.current_size - (history_parent_level - 1), 0);
-            hit_leaf_index = cherry_pick(parent_stack, stack_node_index);
-        }
-
-        int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
-
-        float active_alpha = taa_alpha;
-        if (history_rejection_active != 0) {
-            uvec4 buffer_val = imageLoad(rejection_buffer, buffer_index);
-            
-            vec4 vis_color = vec4(0);
-            if (hit_leaf_index == 0) {
-                vis_color = vec4(0, 0, 1, 1);
-                active_alpha = 1.0;
-            }
-            else if (hit_leaf_index == buffer_val.r) {
-                vis_color = vec4(0, 1, 0, 1);
-            }
-            else if (history_buffer_depth >= 2 && hit_leaf_index == buffer_val.g) {
-                vis_color = vec4(0.25, 0.75, 0, 1);
-                active_alpha = interpolate_alpha * (0.25 + 0.75 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-                imageStore(rejection_buffer, buffer_index, uvec4(buffer_val.g, buffer_val.r, buffer_val.b, buffer_val.a));
-            }
-            else if (history_buffer_depth >= 3 && hit_leaf_index == buffer_val.b) {
-                vis_color = vec4(0.5, 0.5, 0, 1);
-                active_alpha = interpolate_alpha * (0.5 + 0.5 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-                imageStore(rejection_buffer, buffer_index, uvec4(buffer_val.b, buffer_val.r, buffer_val.g, buffer_val.a));
-            }
-            else if (history_buffer_depth >= 4 && hit_leaf_index == buffer_val.a) {
-                vis_color = vec4(0.75, 0.25, 0, 1);
-                active_alpha = interpolate_alpha * (0.75 + 0.25 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-                imageStore(rejection_buffer, buffer_index, uvec4(buffer_val.a, buffer_val.r, buffer_val.g, buffer_val.b));
-            }
-            else {
-                // reject history
-                vis_color = vec4(1, 0, 0, 1);
-                active_alpha = 1.0;
-                imageStore(rejection_buffer, buffer_index, uvec4(hit_leaf_index, buffer_val.r, buffer_val.g, buffer_val.b));
-            }
-
-            if (visualize_history_rejection != 0) {
-                out_color = vis_color;
-                return;
-            }
-        }
-
-        vec4 old_color = imageLoad(history_buffer, buffer_index);
-
-        vec4 new_buffer_color = out_color * active_alpha + old_color * (1 - active_alpha);
-        imageStore(history_buffer, buffer_index, new_buffer_color);
-
-        out_color = new_buffer_color;
+    if (history_parent_level > 0) {
+        int stack_node_index = max(parent_stack.current_size - (history_parent_level - 1), 0);
+        hit_leaf_index = cherry_pick(parent_stack, stack_node_index);
     }
+
+    uint previous_hit_leaf_index = imageLoad(node_hit_buffer, buffer_index).r;
+
+    vec4 previous_hit = imageLoad(space_hit_buffer, buffer_index);
+
+    hit_center_loc = position;
+
+    imageStore(space_hit_buffer, buffer_index, vec4(hit_center_loc, 1));
+    
+    vec3 prev_view_dir = normalize(previous_hit.xyz - hit_center_loc);
+
+    mat4 inverse_view_mat = inverse(view_matrix);
+    vec4 h_previous_hit = vec4(previous_hit.xyz, 1);
+    vec4 h_current_hit = vec4(hit_center_loc, 1);
+
+    vec4 cam_space_prev = view_matrix * h_previous_hit;
+    vec4 cam_space_curr = view_matrix * h_current_hit;
+
+    float z_diff = cam_space_prev.z - cam_space_curr.z;
+
+    vec4 cam_space_prev_flat = vec4(cam_space_prev.xy / cam_space_prev.z, 1, 1);
+    vec4 cam_space_curr_flat = vec4(cam_space_curr.xy / cam_space_curr.z, 1, 1);
+
+    vec2 flat_space_diff = cam_space_prev_flat.xy - cam_space_curr_flat.xy;
+    
+    vec2 buffer_space_motion = flat_space_diff / vec2(horizontal_pixel_size, vertical_pixel_size);
+
+    ivec2 estimated_history_origin = ivec2(gl_FragCoord.xy + buffer_space_motion);
+
+    buffer_space_motion *= sign(hit_leaf_index);
+
+    imageStore(motion_vector_buffer, buffer_index, vec4(buffer_space_motion.xy, 0, 0));
+
+    if (hit_leaf_index != 0 && estimated_history_origin.x < horizontal_pixels && estimated_history_origin.y < vertical_pixels) {
+        int origin_buffer_index = estimated_history_origin.y * horizontal_pixels + estimated_history_origin.x;
+
+        imageStore(motion_vector_buffer, origin_buffer_index, vec4(buffer_space_motion.xy, 1, 0));
+    }
+
+    imageStore(node_hit_buffer, buffer_index, uvec4(hit_leaf_index));
+    imageStore(render_buffer, buffer_index, out_color);
 }

@@ -1,7 +1,7 @@
 #include "Texture.h"
 #include "../utils/GL_Utils.h"
 
-#include "../3rd_party/std_image/std_image.h"	
+#include "../3rd_party/stb_image/stb_image.h"
 
 Texture::Texture(const std::string& path)
 	:m_GlId(), m_FilePath(path), m_bytesPerPixel(0), m_height(0), m_width(0), m_Buf(nullptr)

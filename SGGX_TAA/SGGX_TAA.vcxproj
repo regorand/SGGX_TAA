@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\3rd_party\stb_image\stb_image_write.cpp" />
     <ClCompile Include="src\Renderer\CameraPath.cpp" />
     <ClCompile Include="src\geometry\Octree.cpp" />
     <ClCompile Include="src\utils\Loader.cpp" />
@@ -28,7 +29,7 @@
     <ClCompile Include="src\geometry\OBJ_SGGX_Converter.cpp" />
     <ClCompile Include="src\Renderer\RayMarchObject.cpp" />
     <ClCompile Include="src\Renderer\Light.cpp" />
-    <ClCompile Include="src\3rd_party\std_image\std_image.cpp" />
+    <ClCompile Include="src\3rd_party\stb_image\stb_image.cpp" />
     <ClCompile Include="src\Renderer\Material.cpp" />
     <ClCompile Include="src\Renderer\Camera.cpp" />
     <ClCompile Include="src\Parameters.cpp" />
@@ -49,8 +50,11 @@
     <ClCompile Include="src\geometry\VoxelGrid.cpp" />
     <ClCompile Include="src\gl_wrappers\TextureBuffer.cpp" />
     <ClCompile Include="src\utils\tiny_obj_utils.cpp" />
+    <ClCompile Include="src\Renderer\TAABufferController.cpp" />
+    <ClCompile Include="src\utils\VideoExporter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\3rd_party\stb_image\stb_image_write.h" />
     <ClInclude Include="src\Renderer\CameraPath.h" />
     <ClInclude Include="src\geometry\Octree.h" />
     <ClInclude Include="src\utils\tiny_obj_utils.h" />
@@ -64,7 +68,7 @@
     <ClInclude Include="src\geometry\OBJ_SGGX_Converter.h" />
     <ClInclude Include="src\Renderer\RayMarchObject.h" />
     <ClInclude Include="src\Renderer\Light.h" />
-    <ClInclude Include="src\3rd_party\std_image\std_image.h" />
+    <ClInclude Include="src\3rd_party\stb_image\stb_image.h" />
     <ClInclude Include="src\Renderer\Material.h" />
     <ClInclude Include="src\Renderer\Camera.h" />
     <ClInclude Include="src\Parameters.h" />
@@ -89,6 +93,8 @@
     <ClInclude Include="src\gl_wrappers\Texture.h" />
     <ClInclude Include="src\geometry\VoxelGrid.h" />
     <ClInclude Include="src\gl_wrappers\TextureBuffer.h" />
+    <ClInclude Include="src\Renderer\TAABufferController.h" />
+    <ClInclude Include="src\utils\VideoExporter.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -164,14 +170,16 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\GLFW\x86\include;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\glm</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\GLFW\x86\include;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\opencv\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\x86\lib-vc2019;$(SolutionDir)Dependencies\GLEW\lib\Release\Win32</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;User32.lib;Gdi32.lib;Shell32.lib;glew32s.lib</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;User32.lib;Gdi32.lib;Shell32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ShowProgress>LinkVerboseLib</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -182,7 +190,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\GLFW\x86\include;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\glm</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\GLFW\x86\include;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\opencv\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -191,7 +199,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\x86\lib-vc2019;$(SolutionDir)Dependencies\GLEW\lib\Release\Win32</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;User32.lib;Gdi32.lib;Shell32.lib;glew32s.lib</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;User32.lib;Gdi32.lib;Shell32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ShowProgress>LinkVerboseLib</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

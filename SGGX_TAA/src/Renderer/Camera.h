@@ -22,6 +22,7 @@ public:
 	glm::mat4 getViewMatrix();
 	glm::vec3 getPosition();
 	glm::vec3 getUpVector();
+	glm::vec3 getViewDirection();
 
 	void setPosition(glm::vec3 newPosition);
 	void setViewDiretion(glm::vec3 newViewDirection);

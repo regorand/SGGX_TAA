@@ -18,7 +18,7 @@
 
 #include "../utils/tiny_obj_utils.h"
 
-#include "../3rd_party/std_image/std_image.h"
+#include "../3rd_party/stb_image/stb_image.h"
 
 const uint32_t OBJ_FILE_FORMAT_VERSION = 4;
 

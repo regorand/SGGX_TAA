@@ -77,6 +77,7 @@ void doImGui(SceneController& controller) {
 	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
 	ImGui::SameLine();
 	ImGui::Checkbox("Do Camera Path", &camera_params.doCameraPath);
+	ImGui::Checkbox("Export Video", &parameters.writeVideo);
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Flat Shade", &parameters.flat_shade);
@@ -169,13 +170,13 @@ void doImGui(SceneController& controller) {
 		// Level of detail given by how deep we render the tree
 		ImGui::SliderFloat("Level of Detail", &octree_params.render_depth, 0, 16.0f);
 
-
 		ImGui::SliderInt("Number Iterations", &octree_params.num_iterations, 1, 128);
 
 		ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
 		ImGui::Checkbox("Auto LOD", &octree_params.auto_lod);
 		ImGui::SameLine();
 		ImGui::Checkbox("smooth LOD", &octree_params.smooth_lod);
+		ImGui::Checkbox("Interpolate voxels", &taa_params.interpolate_voxels);
 		ImGui::SliderFloat("Diffuse Parameter", &parameters.diffuse_parameter, 0, 1);
 
 		ImGui::End();
@@ -185,6 +186,8 @@ void doImGui(SceneController& controller) {
 		ImGui::Begin("TAA Controls");
 		ImGui::SliderFloat("Alpha", &taa_params.alpha, 0.0, 1.0);
 		ImGui::Checkbox("Enable TAA", &taa_params.taa_active);
+		ImGui::SameLine();
+		ImGui::Checkbox("reprojection", &taa_params.do_reprojection);
 		ImGui::Spacing();
 		ImGui::Checkbox("Enable Jiggle", &taa_params.jiggle_active);
 		ImGui::SliderFloat("Slider Jiggle", &taa_params.jiggle_factor, 0, 5);

@@ -11,6 +11,7 @@ void RayMarchObject::reloadShader()
 {
 	if (hasVoxelShader()) voxel_shader->reloadShader();
 	if (hasOctreeShader()) octree_shader->reloadShader();
+	if (hasTAAShader()) taa_resolve_shader->reloadShader();
 }
 
 std::shared_ptr<VertexArray> RayMarchObject::getVertexArray()
@@ -61,6 +62,31 @@ bool RayMarchObject::hasOctreeShader()
 bool RayMarchObject::hasValidOctreeShader()
 {
 	return octree_shader != nullptr && octree_shader->isValid();
+}
+
+std::shared_ptr<Shader> RayMarchObject::getTAAResolveShader()
+{
+	return taa_resolve_shader;
+}
+
+bool RayMarchObject::registerTAAShader()
+{
+	const std::string vert_path = "res/shaders/ray_marching.vert";
+	const std::string frag_path = "res/shaders/taa_resolve.frag";
+
+	taa_resolve_shader = std::make_shared<Shader>(vert_path, frag_path);
+
+	return taa_resolve_shader->isValid();
+}
+
+bool RayMarchObject::hasTAAShader()
+{
+	return taa_resolve_shader != nullptr;
+}
+
+bool RayMarchObject::hasValidTAAShader()
+{
+	return taa_resolve_shader != nullptr && taa_resolve_shader->isValid();
 }
 
 void RayMarchObject::setSizes(float horizontal_size, float vertical_size)

@@ -15,6 +15,7 @@
 #include "../geometry/VoxelGrid.h"
 #include "../geometry/Octree.h"
 #include "../gl_wrappers/TextureBuffer.h"
+#include "TAABufferController.h"
 
 // has corresponding const in phong shader
 static const size_t MAX_TEXTURES = 4;
@@ -30,10 +31,12 @@ class Renderer
 
 	std::vector<glm::vec2> m_halton_vectors;
 
-	std::shared_ptr<TextureBuffer> m_historyBuffer;
+	TAABufferController m_bufferController;
+
+	//std::shared_ptr<TextureBuffer> m_historyBuffer;
 
 	// TODO better name ? -> This stores octree node ids, if they dont fit with current -> history rejection
-	std::shared_ptr<TextureBuffer> m_rejectionBuffer;
+	//std::shared_ptr<TextureBuffer> m_rejectionBuffer;
 public:
 	Renderer();
 	~Renderer() {};
@@ -42,6 +45,8 @@ public:
 	void renderVoxels(RayMarchObject* object, Camera& camera, VoxelGrid& voxels);
 	void renderOctreeVisualization(RasterizationObject* object, Camera& camera);
 	void renderOctree(RayMarchObject* object, Camera& camera, Octree& octree);
+
+	glm::vec2 getViewPortDimensions();
 
 	void setProjection(glm::mat4 projectionMatrix);
 	void setViewMatrix(glm::mat4 viewMatrix);

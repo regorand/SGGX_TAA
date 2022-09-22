@@ -13,6 +13,7 @@ Camera::~Camera() {}
 
 glm::mat4 Camera::getViewMatrix()
 {
+	viewDirection = glm::normalize(viewDirection);
 	return glm::lookAt(position, position + viewDirection, up);
 }
 
@@ -29,6 +30,11 @@ glm::vec3 Camera::getUpVector()
 void Camera::setPosition(glm::vec3 newPosition)
 {
 	position = newPosition;
+}
+
+glm::vec3 Camera::getViewDirection()
+{
+	return viewDirection;
 }
 
 void Camera::setViewDiretion(glm::vec3 newViewDirection)

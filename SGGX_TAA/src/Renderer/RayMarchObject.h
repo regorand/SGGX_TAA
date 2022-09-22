@@ -16,6 +16,7 @@ private:
 
 	std::shared_ptr<Shader> voxel_shader;
 	std::shared_ptr<Shader> octree_shader;
+	std::shared_ptr<Shader> taa_resolve_shader;
 
 	float m_horizontal_size;
 	float m_vertical_size;
@@ -38,6 +39,11 @@ public:
 	bool registerOctreeShader(std::shared_ptr<Shader> shader);
 	bool hasOctreeShader();
 	bool hasValidOctreeShader();
+
+	std::shared_ptr<Shader> getTAAResolveShader();
+	bool registerTAAShader();
+	bool hasTAAShader();
+	bool hasValidTAAShader();
 
 	void setSizes(float horizontal_size, float vertical_size);
 	void getSizes(float *horizontal_size, float *vertical_size);

@@ -11,13 +11,16 @@ Renderer::Renderer()
 
 	// this should always be a power of 6, since those retain nice properties 
 	// of the halton sequence for loop arounds
-	const size_t halton_count = 36; 
+	const size_t halton_count = 6;
 
 	m_halton_vectors.resize(halton_count);
 	for (size_t i = 0; i < halton_count; i++) {
 		// m_halton_vectors[i] = glm::vec2(createHaltonSequence(i + 1, 2), createHaltonSequence(i + 1, 3));
 		m_halton_vectors[i] = glm::vec2(createHaltonSequence(i + 1, 2), createHaltonSequence(i + 1, 3)) - glm::vec2(0.5);
 	}
+
+	m_bufferController.registerBuffers(m_horizontal_view_port_size, m_vertical_view_port_size);
+	/*
 	const unsigned int history_buffer_target = 4;
 	const unsigned int rejection_buffer_target = 5;
 
@@ -25,18 +28,19 @@ Renderer::Renderer()
 	const unsigned int rejection_texture_target = 1;
 
 
-	
+
 	size_t history_buffer_size = 4 * sizeof(float) * m_horizontal_view_port_size * m_vertical_view_port_size;;
 	float* history_buffer = new float[history_buffer_size];
 	memset(history_buffer, 0, history_buffer_size);
 	m_historyBuffer = std::make_shared<TextureBuffer>(history_buffer, history_buffer_size, history_buffer_target, history_texture_target, GL_RGBA32F);
 	delete history_buffer;
-	
+
 	size_t rejection_buffer_size = 4 * sizeof(uint32_t) * m_horizontal_view_port_size * m_vertical_view_port_size;
 	uint32_t* rejection_buffer = new uint32_t[rejection_buffer_size];
 	memset(rejection_buffer, 0, rejection_buffer_size);
 	m_rejectionBuffer = std::make_shared<TextureBuffer>(rejection_buffer, rejection_buffer_size, rejection_buffer_target, rejection_texture_target, GL_RGBA32UI);
 	delete rejection_buffer;
+	*/
 }
 
 void Renderer::render(RasterizationObject* object, Camera& camera, std::vector<std::shared_ptr<Light>>& lights)
@@ -166,17 +170,25 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 	auto shader = object->getOctreeShader();
 	shader->bind();
 
-	m_rejectionBuffer->bind();
-	m_historyBuffer->bind();
+	glm::vec3 pos = camera.getPosition();
+	glm::mat view_mat = camera.getViewMatrix();
+	glm::vec3 view_dir = camera.getViewDirection();
+
+
+	m_bufferController.bindAll();
+	//m_rejectionBuffer->bind();
+	//m_historyBuffer->bind();
 
 	bool bound = octree.bindBuffers();
 	if (bound) {
 		glm::mat4 transformation_matrix = camera.getViewMatrix();
 		shader->setUniform3f("camera_pos", camera.getPosition());
+		shader->setUniform3f("camera_view_dir", camera.getViewDirection());
 
 		shader->setUniform3f("lower", octree.getTreeLower());
 		shader->setUniform3f("higher", octree.getTreeHigher());
 
+		shader->setUniformMat4f("view_matrix", camera.getViewMatrix());
 
 		GLint data[4];
 		glGetIntegerv(GL_VIEWPORT, data);
@@ -195,10 +207,17 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("horizontal_pixels", horizontal_pixels);
 		shader->setUniform1i("vertical_pixels", vertical_pixels);
 
-		shader->setUniform1i("history_buffer", 0);
-		shader->setUniform1i("rejection_buffer", 1);
+		shader->setUniform1i("render_buffer", 0);
+		shader->setUniform1i("history_buffer", 1);
+		shader->setUniform1i("rejection_buffer", 2);
+		shader->setUniform1i("node_hit_buffer", 3);
+		shader->setUniform1i("space_hit_buffer", 4);
+		shader->setUniform1i("motion_vector_buffer", 5);
+		shader->setUniform1i("lod_diff_buffer", 6);
 
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
+
+		shader->setUniform3f("up_vector", camera.getUpVector());
 
 		shader->setUniform1i("num_iterations", octree_params.num_iterations);
 
@@ -207,6 +226,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("min_render_depth", octree_params.min_render_depth);
 		// shader->setUniform1i("max_render_depth", octree_params.max_render_depth);
 
+		octree_params.render_depth = glm::min(octree_params.render_depth, (float)octree.getMaxDepth());
 		shader->setUniform1f("render_depth", octree_params.render_depth);
 		shader->setUniform1i("smooth_lod", octree_params.smooth_lod ? 1 : 0);
 
@@ -222,18 +242,14 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		if (taa_params.jiggle_active) {
 			glm::vec2 jiggle = m_halton_vectors[m_frameCount % 6] * glm::vec2(1.0f / horizontal_pixels, 1.0f / vertical_pixels);
 			shader->setUniform2f("jiggle_offset", jiggle * taa_params.jiggle_factor);
-		} else {
+		}
+		else {
 			shader->setUniform2f("jiggle_offset", glm::vec2(0));
 		}
 
 		shader->setUniform1f("diffuse_parameter", parameters.diffuse_parameter);
-		
-		shader->setUniform1i("taa_active", taa_params.taa_active ? 1 : 0);
-		shader->setUniform1i("history_rejection_active", taa_params.doHistoryRejection ? 1 : 0);
-		shader->setUniform1i("visualize_history_rejection", taa_params.visualizeHistoryRejection ? 1 : 0);
-		shader->setUniform1f("taa_alpha", taa_params.alpha);
-		shader->setUniform1i("history_buffer_depth", taa_params.historyRejectionBufferDepth);
-		shader->setUniform1i("interpolate_alpha", taa_params.interpolate_alpha);
+		shader->setUniform1i("interpolate_voxels", taa_params.interpolate_voxels ? 1 : 0);
+
 		shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
 
 		float s1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
@@ -242,20 +258,65 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1f("seed2", s2);
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+		if (taa_params.taa_active) {
+
+
+			glDisable(GL_DEPTH_TEST);
+
+
+			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+			// glFinish();
+
+			shader->unbind();
+
+			auto taa_resolve_shader = object->getTAAResolveShader();
+
+			taa_resolve_shader->bind();
+
+			taa_resolve_shader->setUniform1i("horizontal_pixels", horizontal_pixels);
+			taa_resolve_shader->setUniform1i("vertical_pixels", vertical_pixels);
+
+			taa_resolve_shader->setUniform1i("history_rejection_active", taa_params.doHistoryRejection ? 1 : 0);
+			taa_resolve_shader->setUniform1i("visualize_history_rejection", taa_params.visualizeHistoryRejection ? 1 : 0);
+			taa_resolve_shader->setUniform1f("taa_alpha", taa_params.alpha);
+			taa_resolve_shader->setUniform1i("history_buffer_depth", taa_params.historyRejectionBufferDepth);
+			taa_resolve_shader->setUniform1i("interpolate_alpha", taa_params.interpolate_alpha);
+			taa_resolve_shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
+
+			taa_resolve_shader->setUniform1i("do_reprojection", taa_params.do_reprojection ? 1 : 0);
+
+			// TODO: find out which buffers are actually needed for which passes
+			taa_resolve_shader->setUniform1i("render_buffer", 0);
+			taa_resolve_shader->setUniform1i("history_buffer", 1);
+			taa_resolve_shader->setUniform1i("rejection_buffer", 2);
+			taa_resolve_shader->setUniform1i("node_hit_buffer", 3);
+			taa_resolve_shader->setUniform1i("space_hit_buffer", 4);
+			taa_resolve_shader->setUniform1i("motion_vector_buffer", 5);
+			taa_resolve_shader->setUniform1i("lod_diff_buffer", 6);
+
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			taa_resolve_shader->unbind();
+		}
+
+
 		m_frameCount++;
-
-		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
 	}
 
 	octree.unbindBuffers();
 
-	m_historyBuffer->unbind();
-	m_rejectionBuffer->unbind();
+	//m_historyBuffer->unbind();
+	//m_rejectionBuffer->unbind();
+	m_bufferController.unbindAll();
 
 	object->getVertexArray()->unbind();
 	object->getArrayBuffer()->unbind();
 	shader->unbind();
+}
+
+glm::vec2 Renderer::getViewPortDimensions()
+{
+	return glm::vec2(m_horizontal_view_port_size, m_vertical_view_port_size);
 }
 
 void Renderer::setProjection(glm::mat4 projectionMatrix)

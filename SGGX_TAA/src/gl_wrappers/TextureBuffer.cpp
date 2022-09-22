@@ -2,8 +2,8 @@
 #include "../utils/GL_Utils.h"
 
 
-TextureBuffer::TextureBuffer(void* data, unsigned int size, unsigned int target, unsigned int texture_target, size_t data_type, bool dynamic)
-	: m_target(target), m_texture_target(texture_target), m_datatype(data_type)
+TextureBuffer::TextureBuffer(void* data, unsigned int size, unsigned int texture_target, size_t data_type, bool dynamic)
+	: m_target(0), m_texture_target(texture_target), m_datatype(data_type)
 {
 	glGenBuffers(1, &m_bufObjGlId);
 	glBindBuffer(GL_TEXTURE_BUFFER, m_bufObjGlId);
@@ -22,6 +22,8 @@ TextureBuffer::TextureBuffer(void* data, unsigned int size, unsigned int target,
 
 TextureBuffer::~TextureBuffer()
 {
+	glDeleteTextures(1, &m_texBufGlId);
+	glDeleteBuffers(1, &m_bufObjGlId);
 }
 
 

@@ -8,7 +8,7 @@
 #include "../geometry/Octree.h"
 
 SceneController::SceneController()
-	: camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(nullptr)
+	: camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(nullptr), m_videoExporter(std::make_shared<VideoExporter>())
 {}
 
 SceneController::~SceneController()
@@ -50,6 +50,7 @@ bool SceneController::init()
 	loadAndDisplayObject(model_dir_flat + model_name_flat);
 
 	rayObj = setupRayMarchingQuad();
+	rayObj->registerTAAShader();
 
 	glm::mat4 projection_matrix = glm::perspective(camera_params.fov, ((float)parameters.windowWidth) / parameters.windowHeight, 0.01f, 1000.0f);
 	renderer.setProjection(projection_matrix);
@@ -61,16 +62,6 @@ bool SceneController::init()
 
 void SceneController::doFrame()
 {
-	glm::vec3 v1(0, 0, 0);
-	glm::vec3 v2(1, 0, 0);
-	glm::vec3 v3(0, 1, 0);
-
-	glm::vec3 p(2, 1, 0);
-
-	float u, v, w;
-
-	calculateClampedBarycentricCoordinates(v1, v2, v3, p, u, v, w);
-
 	updateModels();
 	updateCamera();
 	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
@@ -118,6 +109,7 @@ void SceneController::doFrame()
 			renderer.renderOctree(rayObj.get(), camera, *octree);
 		}
 	}
+
 }
 
 void SceneController::updateModels()
@@ -152,6 +144,8 @@ void SceneController::updateModels()
 			sceneObjects.erase(currentlyLoadingPath);
 		}
 	}
+	// TODO implement UI controls
+	exportFrame();
 }
 
 void SceneController::updateCamera()
@@ -182,7 +176,7 @@ void SceneController::updateCamera()
 	glm::vec4 h_up;
 	glm::vec3 lookAt;
 	glm::vec3 cameraPos;
-	
+
 	lookAt = glm::vec3(camera_params.lookAtPos[0], camera_params.lookAtPos[1], camera_params.lookAtPos[2]);
 	if (camera_params.doCameraPath) {
 		Keyframe kf = m_cameraPath.interpolateKeyframe(camera_params.current_frame);
@@ -193,7 +187,7 @@ void SceneController::updateCamera()
 		glm::mat4 rotateMatrix = glm::rotate(angle, axis);
 
 		h_up = rotateMatrix * glm::vec4(default_up, 0);
-		
+
 		if (camera_params.autoplay && ++camera_params.current_frame > m_cameraPath.getMaxFrame()) {
 			camera_params.current_frame = m_cameraPath.getMinFrame();
 		}
@@ -354,6 +348,33 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
 	object->registerOctreeShader(octree_shader);
 
 	return object;
+}
+
+void SceneController::exportFrame()
+{
+	if (parameters.writeVideo) {
+		glm::vec2 dimensions = renderer.getViewPortDimensions();
+		if (!m_videoExporter->exportStarted()) {
+			m_videoExporter->startExport();
+		}
+
+		const unsigned int channels = 4;
+		unsigned int size = 1 * channels * dimensions.x * dimensions.y;
+
+		uint8_t* buffer = new uint8_t[size];
+
+		glReadBuffer(GL_FRONT);
+		glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+		GLPrintError();
+		m_videoExporter->registerFrame(dimensions.y, dimensions.x, channels, buffer);
+
+		delete buffer;
+	}
+	else {
+		if (m_videoExporter->exportStarted()) {
+			m_videoExporter->endExport();
+		}
+	}
 }
 
 void SceneController::loadAndDisplayObject(std::string object_path)

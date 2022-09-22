@@ -56,6 +56,9 @@ typedef struct taa_params_s {
 	bool doHistoryRejection = false; // toggle history rejection, based on octree node hit ?
 	bool visualizeHistoryRejection = false;
 
+	bool interpolate_voxels = false;
+	bool do_reprojection = false;
+
 	float jiggle_factor = 1;
 	// TODO might be useful/interesting in the future
 
@@ -75,6 +78,8 @@ typedef struct params_s {
 	int windowHeight = 1080;
 
 	int current_shader_output = 1;
+
+	bool writeVideo = false;
 
 	int voxel_count = 30;
 	bool forceReload;
