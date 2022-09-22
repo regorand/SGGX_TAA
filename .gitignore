@@ -35,5 +35,5 @@ lib/
 *.dat
 *.rar
 
-videos/*.png
-tmp_frames/*.mp4
+videos
+tmp_frames
