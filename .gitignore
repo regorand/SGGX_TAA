@@ -34,3 +34,6 @@ lib/
 
 *.dat
 *.rar
+
+videos/*.png
+tmp_frames/*.mp4
