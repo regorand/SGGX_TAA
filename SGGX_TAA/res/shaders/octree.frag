@@ -71,6 +71,11 @@ uniform int interpolate_voxels;
 uniform int output_type;
 uniform float AABBOutlineFactor;
 
+uniform int LoD_feedback_types;
+uniform int max_lod_diff;
+uniform int apply_lod_offset;
+uniform int visualize_feedback_level;
+
 uniform float horizontal_pixel_size;
 uniform float vertical_pixel_size;
 
@@ -517,14 +522,14 @@ vec3 evaluateLeaf(leaf_node_s leaf, vec3 ray_dir) {
     return color;
 }
 
-vec3 evaluateNode(uint node_index, vec3 ray_dir, inout bool isEmpty) {
-    uint leaf_index = nodes_data[node_index].leaf_data_index;
+vec3 evaluateNode(uint node_index, vec3 ray_dir, inout bool isNotEmpty, inout uint leaf_index) {
+    leaf_index = nodes_data[node_index].leaf_data_index;
 
         leaf_node_s leaf = leaves_data[leaf_index];
 
         float density = float(READ_SPECIAL_VALUE_MASK(leaf.sigmas)) / 255;
-        isEmpty = abs(density) > 1e-3;
-        int factor = int(output_type == 0 && isEmpty);
+        isNotEmpty = abs(density) > 1e-3;
+        int factor = int(output_type == 0 && isNotEmpty);
         // if (factor == 1) {
         //     return evaluateLeaf(leaf, ray_dir);
         // }
@@ -599,7 +604,8 @@ vec3 interpolateVoxelColor(vec3 ray_dir,
     if (!result) return voxel_color;
 
     bool dummy_bool;
-    vec3 up_color = evaluateNode(node_index, ray_dir, dummy_bool);
+    uint dummy_leaf_index = 0;
+    vec3 up_color = evaluateNode(node_index, ray_dir, dummy_bool, dummy_leaf_index);
 
     // get up + tangent color
     result = traverseUpToParent(target_up_tangent, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
@@ -608,7 +614,7 @@ vec3 interpolateVoxelColor(vec3 ray_dir,
     result = traverseDownToLeaf(target_up_tangent, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
     if (!result) return voxel_color;
 
-    vec3 up_tangent_color = evaluateNode(node_index, ray_dir, dummy_bool);
+    vec3 up_tangent_color = evaluateNode(node_index, ray_dir, dummy_bool, dummy_leaf_index);
 
     // get tangent color
     result = traverseUpToParent(target_up_tangent, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
@@ -617,7 +623,7 @@ vec3 interpolateVoxelColor(vec3 ray_dir,
     result = traverseDownToLeaf(target_up_tangent, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
     if (!result) return voxel_color;
 
-    vec3 tangent_color = evaluateNode(node_index, ray_dir, dummy_bool);
+    vec3 tangent_color = evaluateNode(node_index, ray_dir, dummy_bool, dummy_leaf_index);
 
     vec3 interpolated_color_outside = up_factor * up_tangent_color + (1 - up_factor) * tangent_color;
     vec3 interpolated_color_inside = up_factor * up_color + (1 - up_factor) * voxel_color;
@@ -626,15 +632,14 @@ vec3 interpolateVoxelColor(vec3 ray_dir,
 }
 
 void main() {
+    // General setup
     out_color = vec4(0);
 
     int horizontal_index = int(gl_FragCoord.x);
     int vertical_index = int(gl_FragCoord.y);
     int buffer_index = vertical_index * horizontal_pixels + horizontal_index;
 
-    imageStore(node_hit_buffer, buffer_index, uvec4(0));
-    imageStore(render_buffer, buffer_index, vec4(0));
-
+    
 
     AABB octreeBound = AABB(lower, higher);
 
@@ -649,64 +654,58 @@ void main() {
 
     Intersection base_intersection = getBoxIntersection(pixel_ray, octreeBound);
 
+    // LoD calculations
     int max_depth = int(ceil(render_depth));
     float smooth_lod_factor = fract(render_depth);  
 
     float thales_factor = base_intersection.t_near / length(view_vector);
 
+    float LoD = render_depth;
+    float target_leaf_size = vertical_pixel_size * thales_factor;
+    float base_leaf_size = (higher.x - lower.x) / pow(2, max_tree_depth);
+
+    // Auto LoD calculations
     if (auto_lod == 1) {
-        float target_leaf_size = vertical_pixel_size * thales_factor;
-        float base_leaf_size = (higher.x - lower.x) / pow(2, max_tree_depth);
-        float LoD = max_tree_depth;
         if (target_leaf_size > base_leaf_size) {
             float render_offset = log2(target_leaf_size) - log2(base_leaf_size);
 
             LoD = max(1, LoD - render_offset);
-
-            max_depth = int(ceil(LoD));
-            smooth_lod_factor = fract(LoD); // TODO make sure this doesn't work when going to too deep levels
-            
         }
-        
-        // Visualize auto lod
-        // out_color = vec4(vec3(LoD) / 10, 1);
-        // return;
     }
-
+    
+    // LoD motion difference calculations
     float lod_buffer_value = imageLoad(lod_diff_buffer, buffer_index).r;
-    imageStore(lod_diff_buffer, buffer_index, vec4(0, 0, 0, 0));
-    int discr_lod_diff = int(round(lod_buffer_value));
-    // max_depth = max(1, max_depth - discr_lod_diff);
-    max_depth -= discr_lod_diff;
+    int discrete_lod_buffer_value = min(max_lod_diff, int(round(lod_buffer_value)));
+
+    max_depth = int(ceil(LoD));
+    
+    max_depth -= apply_lod_offset * discrete_lod_buffer_value;
+    
+    smooth_lod_factor = fract(LoD);
 
     if (max_depth > max_tree_depth) {
         smooth_lod_factor = 1;
     }
 
+    // discard if not hitting AABB
     float base_factor = step_0(base_intersection.t_far - base_intersection.t_near);    
     if (base_factor == 0) {
+        imageStore(space_hit_buffer, buffer_index, vec4(0));
+        imageStore(node_hit_buffer, buffer_index, uvec4(0));
         discard;
     }
 
-
-    
-
+    // traversal setup
     vec3 position = ray_base + base_intersection.t_near * view_direction + ray_eps;
 
     vec3 outline_color = (position - lower) / (higher - lower);
 
     vec3 sggx_sum_color = vec3(0);
 
-    float roentgen_count = 0;
-
     uint hit_leaf_index = 0;
     vec3 hit_center_loc = vec3(0);
 
-    float upFactor = 0;
-    float tangentFactor = 0;
-
     vec3 ray_dir = pixel_ray.ray_dir;
-
 
     uint parent_buf[max_stack_size];
     Stack parent_stack = Stack(parent_buf, 0);
@@ -718,94 +717,37 @@ void main() {
 
     uint node_index = 0;
     int current_depth = 0;
-    // Find Leaf at Position
 
+    // Start traversal
     bool result = traverseDownToLeaf(position, max_depth, current_depth, node_index, running_aabb, parent_stack, aabb_stack);
     Intersection leaf_intersection = getBoxIntersection(pixel_ray, running_aabb);
 
     float count = 0;
-    float remaining_contribution = 1.0;
 
     while (result && count < 200) {
         // Render Leaf
         count++;
-        roentgen_count += step_0(float(current_depth) - min_render_depth);
-        
-        // TODO replace this with new method evaluateNode
-        uint leaf_index = nodes_data[node_index].leaf_data_index;
-        if (leaf_index < leaves_size) {
-            leaf_node_s leaf = leaves_data[leaf_index];
+    
+        bool isNotEmpty = false;
+        uint leaf_index = 0;
+        vec3 color = evaluateNode(node_index, ray_dir, isNotEmpty, leaf_index);
 
-            float density = float(READ_SPECIAL_VALUE_MASK(leaf.sigmas)) / 255;
+        if (isNotEmpty) {
+            if (smooth_lod != 0 && parent_stack.current_size > 0) {
+                // smooth lod still a little broken since LoD slider change
+                uint parent_node = top(parent_stack);
 
-            if (output_type == 0 && abs(density) > 1e-3) {
-                    vec3 sggx_color = vec3(1);
-
-                    uint r = READ_X_VALUE_MASK(leaf.color);
-                    uint g = READ_Y_VALUE_MASK(leaf.color);
-                    uint b = READ_Z_VALUE_MASK(leaf.color);
-
-                    // sggx_color = vec3(float(r) / 255, float(g) / 255, float(b) / 255);
-                    if (r != 0 || g != 0 || b != 0) {
-                        sggx_color = vec3(float(r) / 255, float(g) / 255, float(b) / 255);
-                    }
-
-                    vec3 color = evaluateSggx(leaf, ray_dir, sggx_color);
-                    color *= (1 - diffuse_parameter);
-                    color += diffuse_parameter * sggx_color;
+                bool parent_empty = false;
+                uint parent_leaf = 0;
+                vec3 parent_color = evaluateNode(parent_node, ray_dir, parent_empty, parent_leaf);
                 
-                    if (interpolate_voxels != 0) {
-                        color = interpolateVoxelColor(ray_dir,
-                            pixel_ray.ray_origin,
-                            base_intersection,
-                            color,
-                            max_depth,
-                            current_depth, 
-                            node_index, 
-                            running_aabb, 
-                            parent_stack,
-                            aabb_stack);
-                    }
-
-
-                if (smooth_lod != 0 && parent_stack.current_size > 0) {
-                    uint parent_node = top(parent_stack);
-                    uint parent_leaf_index = nodes_data[parent_node].leaf_data_index;
-                    if (parent_leaf_index < leaves_size) {
-                        leaf_node_s parent_leaf = leaves_data[parent_leaf_index]; 
-
-                        float parent_density = float(READ_SPECIAL_VALUE_MASK(parent_leaf.sigmas)) / 255;
-
-                        if (abs(parent_density) > 1e-3) {
-                            vec3 parent_sggx_color = vec3(1);
-
-                            uint r = READ_X_VALUE_MASK(parent_leaf.color);
-                            uint g = READ_Y_VALUE_MASK(parent_leaf.color);
-                            uint b = READ_Z_VALUE_MASK(parent_leaf.color);
-
-                            // sggx_color = vec3(float(r) / 255, float(g) / 255, float(b) / 255);
-                            if (r != 0 || g != 0 || b != 0) {
-                                parent_sggx_color = vec3(float(r) / 255, float(g) / 255, float(b) / 255);
-                            }
-
-                            vec3 parent_color = evaluateSggx(parent_leaf, ray_dir, parent_sggx_color);
-                            parent_color *= (1 - diffuse_parameter);
-                            parent_color += diffuse_parameter * parent_sggx_color;
-
-                            
-
-                            color = smooth_lod_factor * color + (1 - smooth_lod_factor) * parent_color;
-                        }
-                    }
-
-                }
-                // sggx_sum_color += remaining_contribution * length_factor * color;
-                sggx_sum_color += color;
-                hit_leaf_index = leaf_index;
-                hit_center_loc = (running_aabb.lower + running_aabb.upper) / 2;
-
-                break;
+                color = smooth_lod_factor * color + (1 - smooth_lod_factor) * parent_color;
             }
+
+            sggx_sum_color += color;
+            hit_leaf_index = leaf_index;
+            hit_center_loc = (running_aabb.lower + running_aabb.upper) / 2;
+            break;
         }
 
         // Get new Position
@@ -825,34 +767,29 @@ void main() {
 
     // Calculate output Color after traversal 
     if (output_type == 0) {
-        out_color = vec4(sggx_sum_color, 1);
-    } else if (output_type == 1) {
-        //out_color = vec4(float(count) / 50 * vec3(1, 0, 0.5), 1);
-        vec3 color = vec3(1, 0, 0.5);
-        out_color = vec4(roentgen_count / float(roentgen_denom) * color, 1);
+        out_color = vec4(sggx_sum_color, step_0(hit_leaf_index) * 1);
     }
 
     // This renders an outline around the bounding box if AABBOutlineFactor uniform is set to 1
     out_color += AABBOutlineFactor * 0.3 * vec4(outline_color, 1);
 
+
+    // From here: TAA 
     if (history_parent_level > 0) {
         int stack_node_index = max(parent_stack.current_size - (history_parent_level - 1), 0);
         hit_leaf_index = cherry_pick(parent_stack, stack_node_index);
     }
 
     uint previous_hit_leaf_index = imageLoad(node_hit_buffer, buffer_index).r;
-
+    imageStore(node_hit_buffer, buffer_index, uvec4(0));
+    imageStore(render_buffer, buffer_index, vec4(0));
+    
     vec4 previous_hit = imageLoad(space_hit_buffer, buffer_index);
 
-    hit_center_loc = position;
-
-    imageStore(space_hit_buffer, buffer_index, vec4(hit_center_loc, 1));
+    imageStore(space_hit_buffer, buffer_index, vec4(position, 1));
     
-    vec3 prev_view_dir = normalize(previous_hit.xyz - hit_center_loc);
-
-    mat4 inverse_view_mat = inverse(view_matrix);
     vec4 h_previous_hit = vec4(previous_hit.xyz, 1);
-    vec4 h_current_hit = vec4(hit_center_loc, 1);
+    vec4 h_current_hit = vec4(position, 1);
 
     vec4 cam_space_prev = view_matrix * h_previous_hit;
     vec4 cam_space_curr = view_matrix * h_current_hit;
@@ -870,14 +807,51 @@ void main() {
 
     buffer_space_motion *= sign(hit_leaf_index);
 
-    imageStore(motion_vector_buffer, buffer_index, vec4(buffer_space_motion.xy, 0, 0));
+    float diff_3d_length = length(previous_hit.xyz - position);
 
-    if (hit_leaf_index != 0 && estimated_history_origin.x < horizontal_pixels && estimated_history_origin.y < vertical_pixels) {
-        int origin_buffer_index = estimated_history_origin.y * horizontal_pixels + estimated_history_origin.x;
+    
 
-        imageStore(motion_vector_buffer, origin_buffer_index, vec4(buffer_space_motion.xy, 1, 0));
+    float offset = 0;
+    if (LoD_feedback_types == 1) {
+        float buffer_space_dist = length(buffer_space_motion.xy);
+
+        offset = max(0, log2(buffer_space_dist));
+    } else if (LoD_feedback_types == 2) {
+        float f_b = diff_3d_length / base_leaf_size;
+
+        offset = max(0, log2(f_b));
+    } else if (LoD_feedback_types == 3) {
+        float previous_voxel_size = (higher.x - lower.x) / pow(2, max_depth);
+        float f_p = diff_3d_length / previous_voxel_size;
+
+        offset = max(0, log2(f_p));
+    } else if (LoD_feedback_types == 4) {
+        float previous_voxel_size = (higher.x - lower.x) / pow(2, max_depth);
+        float f_p = diff_3d_length / previous_voxel_size;
+
+        offset = log2(f_p);
     }
 
+    offset *= step_0(hit_leaf_index);//  * step_0(previous_hit_leaf_index);
+
+    if (visualize_feedback_level != 0) {
+        out_color = vec4(offset, 0, 0, 1);
+    } else {
+        imageStore(lod_diff_buffer, buffer_index, vec4(offset, 0, 0, 0));
+    }
+
+    int valid_motion_factor =   hit_leaf_index != 0 && estimated_history_origin.x < horizontal_pixels 
+                                && estimated_history_origin.y < vertical_pixels
+                                    ? 1 : 0;
+
+    vec4 motion_buffer_content = vec4(buffer_space_motion.xy, diff_3d_length, valid_motion_factor);
+
+    int origin_buffer_index =   valid_motion_factor * (estimated_history_origin.y * horizontal_pixels + estimated_history_origin.x)
+                                + (1 - valid_motion_factor) * buffer_index;
+
+    imageStore(motion_vector_buffer, origin_buffer_index, motion_buffer_content);
+
     imageStore(node_hit_buffer, buffer_index, uvec4(hit_leaf_index));
+
     imageStore(render_buffer, buffer_index, out_color);
 }

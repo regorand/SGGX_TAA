@@ -26,3 +26,5 @@ void initTypes()
 std::vector<std::string> render_types_2({ "Rasterization", "Voxels", "Octree Visualization", "Octree"});
 
 std::vector<std::string> shader_output_types({ "white", "shaded", "shaded solid", "normal", "abs_normal", "position", "custom" });
+
+std::vector<std::string> LoD_feedback_types({ "None", "Buffer Space", "World space Base", "World space prev log", "World space prev" });

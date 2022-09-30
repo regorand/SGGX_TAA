@@ -51,7 +51,7 @@
     <ClCompile Include="src\gl_wrappers\TextureBuffer.cpp" />
     <ClCompile Include="src\utils\tiny_obj_utils.cpp" />
     <ClCompile Include="src\Renderer\TAABufferController.cpp" />
-    <ClCompile Include="src\utils\VideoExporter.cpp" />
+    <ClCompile Include="src\utils\Exporter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\3rd_party\stb_image\stb_image_write.h" />
@@ -94,7 +94,7 @@
     <ClInclude Include="src\geometry\VoxelGrid.h" />
     <ClInclude Include="src\gl_wrappers\TextureBuffer.h" />
     <ClInclude Include="src\Renderer\TAABufferController.h" />
-    <ClInclude Include="src\utils\VideoExporter.h" />
+    <ClInclude Include="src\utils\Exporter.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

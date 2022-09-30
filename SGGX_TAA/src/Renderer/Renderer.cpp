@@ -145,6 +145,9 @@ void Renderer::renderOctreeVisualization(RasterizationObject* object, Camera& ca
 	// step size: 0.125
 	glLineWidth(1.0f);
 
+	// If i need different color for octree
+	// glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
 	object->getVertexArray()->bind();
 	object->getIndexBuffer()->bind();
 	object->getShader()->bind();
@@ -217,6 +220,11 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 
 		shader->setUniform1i("auto_lod", octree_params.auto_lod ? 1 : 0);
 
+		shader->setUniform1i("LoD_feedback_types", taa_params.Lod_feedback_level);
+		shader->setUniform1i("max_lod_diff", taa_params.max_lod_diff);
+		shader->setUniform1i("apply_lod_offset", taa_params.apply_lod_offset ? 1 : 0);
+		shader->setUniform1i("visualize_feedback_level", taa_params.visualize_feedback_level ? 1 : 0);
+
 		shader->setUniform3f("up_vector", camera.getUpVector());
 
 		shader->setUniform1i("num_iterations", octree_params.num_iterations);
@@ -239,7 +247,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1i("inner_nodes_size", octree.getInnerSize());
 		shader->setUniform1i("leaves_size", octree.getLeavesSize());
 
-		if (taa_params.jiggle_active) {
+		if (taa_params.taa_active && !taa_params.disable_jiggle) {
 			glm::vec2 jiggle = m_halton_vectors[m_frameCount % 6] * glm::vec2(1.0f / horizontal_pixels, 1.0f / vertical_pixels);
 			shader->setUniform2f("jiggle_offset", jiggle * taa_params.jiggle_factor);
 		}
@@ -259,7 +267,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-		if (taa_params.taa_active) {
+		if (taa_params.taa_active && object->hasValidTAAShader()) {
 
 
 			glDisable(GL_DEPTH_TEST);
@@ -285,6 +293,10 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 			taa_resolve_shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
 
 			taa_resolve_shader->setUniform1i("do_reprojection", taa_params.do_reprojection ? 1 : 0);
+
+			taa_resolve_shader->setUniform1i("visualize_active_alpha", taa_params.visualize_active_alpha ? 1 : 0);
+			taa_resolve_shader->setUniform1i("visualize_edge_detection", taa_params.visualize_edge_detection ? 1 : 0);
+			taa_resolve_shader->setUniform1i("visualize_motion_vectors", taa_params.visualize_motion_vectors ? 1 : 0);
 
 			// TODO: find out which buffers are actually needed for which passes
 			taa_resolve_shader->setUniform1i("render_buffer", 0);

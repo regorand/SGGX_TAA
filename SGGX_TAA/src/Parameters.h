@@ -24,6 +24,9 @@ typedef struct camera_params_s {
 	int min_frame = 0;
 	int max_frame = 1;
 	int current_frame = 0;
+
+	int add_frame = 0;
+	bool lock_to_path = false;
 } Camera_Params;
 
 typedef struct octree_params_s {
@@ -49,7 +52,7 @@ typedef struct octree_params_s {
 
 typedef struct taa_params_s {
 	bool taa_active = false;
-	bool jiggle_active = false;
+	bool disable_jiggle = false;
 	
 	float alpha = 0.1;
 	
@@ -60,14 +63,19 @@ typedef struct taa_params_s {
 	bool do_reprojection = false;
 
 	float jiggle_factor = 1;
-	// TODO might be useful/interesting in the future
-
-	float jiggle_limiter = 0; // limit jigglying if it looks bad ?
 
 	int historyRejectionBufferDepth = 1; // Goes from 1 to 4, accept how many past nodes
 	bool interpolate_alpha = false; // Accept even older values in buffer as perfect match or interpolate alpha between set value
 									// and 1 depending on how far ago this node was hit
 	
+	bool visualize_edge_detection = false;
+	bool visualize_active_alpha = false;
+	bool visualize_motion_vectors = false;
+
+	int Lod_feedback_level = 0;
+	int max_lod_diff = 1;
+	bool apply_lod_offset = false;
+	bool visualize_feedback_level = false;
 
 	int historyParentRejectionLevel = 0;	// 0 wrong value eventually, use higher nodes for history rejection ?
 } TAA_params ;
@@ -111,6 +119,8 @@ typedef struct params_s {
 	float ggx_param = 0.2f;
 	float rayMarchDist = 0.1f;
 	int rayMarchMaxSteps = 80;
+
+	long last_image_export = 0;
 } Parameters;
 
 extern Parameters parameters;

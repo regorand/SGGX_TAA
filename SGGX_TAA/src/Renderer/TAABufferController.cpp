@@ -42,7 +42,7 @@ void TAABufferController::registerBuffers(const unsigned int width, const unsign
 	size_t motion_vector_buffer_size = 4 * sizeof(float) * buffer_element_size;
 	registerBuffer(m_motionVectorBuffer, motion_vector_buffer_size, GL_RGBA32F, motion_vector_texture_target);
 
-	size_t lod_diff_buffer_size = 4 * sizeof(float) * buffer_element_size;
+	size_t lod_diff_buffer_size = 1 * sizeof(float) * buffer_element_size;
 	registerBuffer(m_estimatedLodDiff, lod_diff_buffer_size, GL_R32F, lod_diff_texture_target);
 
 	m_isValid = true;

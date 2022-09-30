@@ -14,7 +14,7 @@
 #include "../geometry/VoxelGrid.h"
 #include "../utils/Loader.h"
 #include "../Types.h"
-#include "../utils/VideoExporter.h"
+#include "../utils/Exporter.h"
 
 
 class SceneController
@@ -28,7 +28,7 @@ private:
 	std::shared_ptr<RayMarchObject> rayObj;
 	std::shared_ptr<VoxelGrid> m_voxels;
 
-	std::shared_ptr<VideoExporter> m_videoExporter;
+	std::shared_ptr<Exporter> m_Exporter;
 
 	std::string currentlyLoadingPath;
 
@@ -53,6 +53,10 @@ public:
 	void lookAtObject();
 	std::shared_ptr<RayMarchObject> setupRayMarchingQuad();
 
+	void addKeyframe();
+	void resetKeyframes();
+
+	void exportImage(unsigned long time);
 	void exportFrame();
 
 	void loadAndDisplayObject(std::string object_path);

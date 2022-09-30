@@ -236,7 +236,7 @@ bool Octree::buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Objec
 		tex.buffer = nullptr;
 		tex.path = mesh_object.materials[i].diffuse_texname;
 		if (tex.path != "") {
-			tex.buffer = stbi_load(tex.path.c_str(), &tex.width, &tex.height, &tex.bytesPerPixel, 4);
+			tex.buffer = stbi_load(tex.path.c_str(), &tex.width, &tex.height, &tex.bytesPerPixel, 3);
 
 		}
 		m_textures.push_back(tex);
@@ -1055,7 +1055,7 @@ glm::vec3 Octree::sampleTexture(Texture_s tex, glm::vec2 uv)
 	int count = 0;
 	for (size_t x = x_coord_lower; x <= x_coord_upper; x++) {
 		for (size_t y = y_coord_lower; y <= y_coord_upper; y++) {
-			int index = 4 * (y * tex.width + x);
+			int index = tex.bytesPerPixel * (y * tex.width + x);
 
 			unsigned int r = *(tex.buffer + index);
 			unsigned int g = *(tex.buffer + index + 1);

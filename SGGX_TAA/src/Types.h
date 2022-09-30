@@ -24,4 +24,6 @@ extern std::vector<std::string> render_types_2;
 
 extern std::vector<std::string> shader_output_types;
 
+extern std::vector<std::string> LoD_feedback_types;
+
 //TODO specifiy sensible default here and use in parameters

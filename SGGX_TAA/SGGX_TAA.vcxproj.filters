@@ -108,7 +108,7 @@
     <ClCompile Include="src\Renderer\TAABufferController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\VideoExporter.cpp">
+    <ClCompile Include="src\utils\Exporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\3rd_party\stb_image\stb_image_write.cpp">
@@ -233,7 +233,7 @@
     <ClInclude Include="src\Renderer\TAABufferController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\VideoExporter.h">
+    <ClInclude Include="src\utils\Exporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\3rd_party\stb_image\stb_image_write.h">

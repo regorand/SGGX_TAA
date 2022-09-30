@@ -17,6 +17,10 @@ uniform float taa_alpha;
 
 uniform int history_rejection_active;
 uniform int visualize_history_rejection;
+uniform int visualize_motion_vectors;
+
+uniform int visualize_active_alpha;
+uniform int visualize_edge_detection;
 
 uniform int history_buffer_depth;
 uniform int interpolate_alpha;
@@ -36,54 +40,60 @@ void main() {
     uint hit_leaf_index = imageLoad(node_hit_buffer, buffer_index).r;
 
     //TODO probably easiest to clear motion vectors here
-    vec3 motion_vector = imageLoad(motion_vector_buffer, buffer_index).xyz;
+    vec4 motion_vector = imageLoad(motion_vector_buffer, buffer_index);
     imageStore(motion_vector_buffer, buffer_index, vec4(0));
+    float buffer_space_length = length(motion_vector.xy);
 
-    float step_val = 0;
-    // TODO: make this factor smooth ?
-    int thinkIsEdge = length(motion_vector) > step_val ? 1 : 0;
+
+    float step_val = 0.0;    
+    int thinkIsEdge = buffer_space_length > step_val && hit_leaf_index == 0 ? 1 : 0; 
     
+    //float active_alpha = thinkIsEdge + (1 - thinkIsEdge) * taa_alpha;
     float active_alpha = taa_alpha;
+
+
     if (history_rejection_active != 0) {
         uvec4 buffer_val = imageLoad(rejection_buffer, buffer_index);
-            
+
         vec4 vis_color = vec4(0);
-        uvec4 store_color = uvec4(0);
+        uvec4 new_buffer_val = uvec4(0);
         if (hit_leaf_index == 0) {
             vis_color = vec4(0, 0, 1, 1);
             active_alpha = thinkIsEdge + (1 - thinkIsEdge) * active_alpha;
-            store_color = thinkIsEdge * uvec4(0) + (1 - thinkIsEdge) * buffer_val;
+            // new_buffer_val = buffer_val;
+            new_buffer_val = uvec4(0, buffer_val.r, buffer_val.g, buffer_val.b);
+            uint factor = buffer_val.r * buffer_val.g + buffer_val.b + buffer_val.a;
+            factor = factor > 0 ? 1 : 0;
+            active_alpha = factor + (1 - factor) * active_alpha;
         }
         else if (hit_leaf_index == buffer_val.r) {
             vis_color = vec4(0, 1, 0, 1);
-            store_color = buffer_val;
+            new_buffer_val = buffer_val;
         }
         else if (history_buffer_depth >= 2 && hit_leaf_index == buffer_val.g) {
             vis_color = vec4(0.25, 0.75, 0, 1);
             active_alpha = interpolate_alpha * (0.25 + 0.75 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-            store_color = uvec4(buffer_val.g, buffer_val.r, buffer_val.b, buffer_val.a);
-            // imageStore(rejection_buffer, buffer_index, uvec4(buffer_val.g, buffer_val.r, buffer_val.b, buffer_val.a));
+            new_buffer_val = uvec4(buffer_val.g, buffer_val.r, buffer_val.b, buffer_val.a);
         }
         else if (history_buffer_depth >= 3 && hit_leaf_index == buffer_val.b) {
             vis_color = vec4(0.5, 0.5, 0, 1);
             active_alpha = interpolate_alpha * (0.5 + 0.5 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-            store_color = uvec4(buffer_val.b, buffer_val.r, buffer_val.g, buffer_val.a);
-            // imageStore(rejection_buffer, buffer_index, );
+            new_buffer_val = uvec4(buffer_val.b, buffer_val.r, buffer_val.g, buffer_val.a);
         }
         else if (history_buffer_depth >= 4 && hit_leaf_index == buffer_val.a) {
             vis_color = vec4(0.75, 0.25, 0, 1);
             active_alpha = interpolate_alpha * (0.75 + 0.25 * active_alpha) + (1 - interpolate_alpha) * active_alpha;
-            store_color = uvec4(buffer_val.a, buffer_val.r, buffer_val.g, buffer_val.b);
-            // imageStore(rejection_buffer, buffer_index, );
+            new_buffer_val = uvec4(buffer_val.a, buffer_val.r, buffer_val.g, buffer_val.b);
         }
         else {
             // reject history
             vis_color = vec4(1, 0, 0, 1);
             active_alpha = 1.0;
-            // imageStore(rejection_buffer, buffer_index, uvec4(hit_leaf_index, buffer_val.r, buffer_val.g, buffer_val.b));
-            store_color = uvec4(hit_leaf_index, buffer_val.r, buffer_val.g, buffer_val.b);
+            new_buffer_val = uvec4(hit_leaf_index, buffer_val.r, buffer_val.g, buffer_val.b);
         }
-        imageStore(rejection_buffer, buffer_index, store_color);
+
+        new_buffer_val = thinkIsEdge * uvec4(0) + (1 - thinkIsEdge) * new_buffer_val;
+        imageStore(rejection_buffer, buffer_index, new_buffer_val);
         if (visualize_history_rejection != 0) {
             out_color = vis_color;
             return;
@@ -92,40 +102,44 @@ void main() {
 
     int history_index = buffer_index;
     
-    float l =  length(motion_vector.xy);
-    bool motion_vector_above_half = motion_vector.x >= 0.5 || motion_vector.y >= 0.5;
-    if (do_reprojection != 0 && abs(motion_vector.z) > 1e-3 && l  < 3) {
+    if (do_reprojection > 0) {
+        float motion_valid_factor = motion_vector.a;
+        active_alpha = motion_valid_factor * active_alpha + (1 - motion_valid_factor);
+
+
+
+        float base = 2;
+        float val = pow(base, -buffer_space_length);
+        active_alpha = active_alpha * val + (1 - val);
+        //out_color = vec4(buffer_space_length, buffer_space_length, buffer_space_length, 1);
+
+
+
         ivec2 coords = ivec2(gl_FragCoord.xy + motion_vector.xy);
-        if (coords.x < horizontal_pixels && coords.y < vertical_pixels) {
-            history_index = coords.y * horizontal_pixels + coords.x;
-        }
+        float buffer_move_factor = abs(motion_vector.a) > 1e-3 // make sure motion is large enough
+            && coords.x < horizontal_pixels && coords.y < vertical_pixels // make sure result is in bounds
+            ? 1 : 0;
+        
+        history_index = int(buffer_move_factor) * (coords.y * horizontal_pixels + coords.x) + (1 - int(buffer_move_factor)) * buffer_index;
+        
     }
-
-
-    float motion_vector_length = length(motion_vector.xy);
-    //imageStore(lod_diff_buffer, buffer_index, vec4(motion_vector_length, 0, 0, 0));
-    if (false || motion_vector_above_half) {
-        imageStore(lod_diff_buffer, buffer_index, vec4(1, 0, 0, 0));
-        out_color = vec4(1, 0, 0, 1);
-        // return;
-    }
-    
 
     vec4 rendered_color = imageLoad(render_buffer, buffer_index);
+    imageStore(render_buffer, buffer_index, vec4(0));
     vec4 old_color = imageLoad(history_buffer, history_index);
-
+    
     vec4 new_buffer_color = rendered_color * active_alpha + old_color * (1 - active_alpha);
     imageStore(history_buffer, buffer_index, new_buffer_color);
-    imageStore(motion_vector_buffer, buffer_index, vec4(0));
 
-    int mvf = 1;
-
-    out_color = vec4((motion_vector.xyz) / mvf, 1);
-    //out_color = vec4(vec3(motion_vector_length, motion_vector_length, motion_vector_length) / mvf, 1) ;
-
+    if (thinkIsEdge != 0) {
+        // imageStore(history_buffer, buffer_index, vec4(0));
+    }    
 
     out_color = new_buffer_color;
 
-    // out_color = vec4(motion_vector.xy, 0, 1);
-    // out_color = vec4(active_alpha, 0, 0, 1);
+    out_color = visualize_active_alpha * active_alpha + (1 - visualize_active_alpha) * out_color;
+
+    out_color = visualize_edge_detection * thinkIsEdge + (1 - visualize_edge_detection) * out_color;
+
+    out_color = visualize_motion_vectors * vec4(abs(motion_vector.xy), 0, 1) + (1 - visualize_motion_vectors) * out_color;
 }

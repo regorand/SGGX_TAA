@@ -28,7 +28,8 @@ public:
 
 	void addKeyframe(Keyframe keyframe, unsigned int frame);
 
-	Keyframe interpolateKeyframe(unsigned int frame);
+	Keyframe interpolateKeyframeLinear(unsigned int frame);
+	Keyframe interpolateKeyframeCatmull(unsigned int frame);
 
 	unsigned int getMinFrame();
 	unsigned int getMaxFrame();
@@ -36,6 +37,8 @@ public:
 	void setFrontKeyframe(Keyframe kf);
 	void setBackKeyframe(Keyframe kf);
 	void setLinearEndKeyframes();
+
+	void reset();
 private:
 	float GetT(float t, float alpha, const glm::vec3& p0, const glm::vec3& p1);
 

@@ -19,7 +19,61 @@ void CameraPath::addKeyframe(Keyframe keyframe, unsigned int frame)
     max_frame = glm::max(frame, max_frame);
 }
 
-Keyframe CameraPath::interpolateKeyframe(unsigned int frame)
+Keyframe CameraPath::interpolateKeyframeLinear(unsigned int frame)
+{
+    if (m_keyframes.size() <= 0) return { glm::vec3(0, 0, 0), glm::vec3(0, 0, 0) };
+    if (m_keyframes.size() == 1) return m_keyframes.begin()->second;
+
+    auto it = m_keyframes.begin();
+    unsigned int current_frame = it->first;
+    unsigned int prev_frame = current_frame;
+
+    Keyframe kf1 = it->second;
+
+    if (current_frame > frame) {
+        // frame number lower than first frame, clamp to first keyframe we have
+        return kf1;
+    }
+
+    it++;
+    prev_frame = current_frame;
+    current_frame = it->first;
+    Keyframe kf2 = it->second;
+
+    while (current_frame < frame) {
+        kf1 = kf2;
+        it++;
+        kf2 = it->second;
+
+        prev_frame = current_frame;
+        current_frame = it->first;
+    }
+
+    float local_t = ((float)frame - prev_frame) / ((float)current_frame - prev_frame);
+
+    glm::vec3 interpolated_pos = glm::lerp(kf1.position, kf2.position, local_t);
+
+    // TODO: use quaternion slerp instead of interpolation euler angles
+    /*
+    float cos = glm::dot(kf1.rotation, kf2.rotation);
+    float axis = glm::cross(kf1.rotation, kf2.rotation);
+
+    glm::quat q1(glm::vec3(0, 0, -1), kf1.rotation);
+    glm::quat q2(glm::vec3(0, 0, -1), kf2.rotation);
+
+    glm::quat q3 = glm::slerp(q1, q2, local_t);
+
+    glm::rotate()
+
+    q3.
+    */
+
+    glm::vec3 interpolated_rot = glm::normalize(glm::lerp(kf1.rotation, kf2.rotation, local_t));
+
+    return { interpolated_pos, interpolated_rot };
+}
+
+Keyframe CameraPath::interpolateKeyframeCatmull(unsigned int frame)
 {
     if (m_keyframes.size() <= 0) return { glm::vec3(0, 0, 0), glm::vec3(0, 0, 0) };
     if (m_keyframes.size() == 1) return m_keyframes.begin()->second;
@@ -84,7 +138,9 @@ Keyframe CameraPath::interpolateKeyframe(unsigned int frame)
 
     glm::vec3 interpolated_pos = CatmullRom(kf1.position, kf2.position, kf3.position, kf4.position, t);
 
-    return { interpolated_pos, glm::vec3(0, 0, 0) };
+    glm::vec3 interpolated_rot = (1 - t) * kf2.rotation + t * kf3.rotation;
+
+    return { interpolated_pos, interpolated_rot };
 }
 
 unsigned int CameraPath::getMinFrame()
@@ -123,6 +179,19 @@ void CameraPath::setLinearEndKeyframes()
     kf2 = back_it->second;
     glm::vec3 back_pos = kf1.position + (kf1.position - kf2.position);
     m_back_keyframe = { back_pos, glm::vec3(0) };
+}
+
+void CameraPath::reset()
+{
+    m_keyframes.clear();
+
+    // Catmull Intepolation uses 4 points to interpolate, these two are the ones to be used when interpolating the first or last 
+    // of the actual camera positions
+    m_front_keyframe = { glm::vec3(0), glm::vec3(0) };
+    m_back_keyframe = { glm::vec3(0), glm::vec3(0) };
+
+    min_frame = 0xFFFFFFFF;
+    max_frame = 0;
 }
 
 

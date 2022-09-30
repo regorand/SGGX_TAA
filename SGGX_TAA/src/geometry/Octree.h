@@ -88,7 +88,7 @@ typedef struct {
 
 typedef struct texture_m {
 	std::string path;
-	unsigned char* buffer;
+	uint8_t* buffer;
 	int width;
 	int height;
 	int bytesPerPixel;

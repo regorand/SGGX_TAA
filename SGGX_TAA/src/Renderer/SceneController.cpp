@@ -8,7 +8,7 @@
 #include "../geometry/Octree.h"
 
 SceneController::SceneController()
-	: camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(nullptr), m_videoExporter(std::make_shared<VideoExporter>())
+	: camera(Camera(glm::vec3(0, 0, 1), glm::vec3(0, 0, -1))), m_voxels(nullptr), m_Exporter(std::make_shared<Exporter>())
 {}
 
 SceneController::~SceneController()
@@ -19,14 +19,17 @@ bool SceneController::init()
 {
 	CameraPath path;
 
-	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 0), glm::vec3(0, 0, 0) }, 0);
-	m_cameraPath.addKeyframe({ glm::vec3(0, 0, 10), glm::vec3(0, 0, 0) }, 180);
+	m_cameraPath.addKeyframe({ glm::vec3(10, 0, -10), glm::vec3(-1, 0, 0) }, 0);
+	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 10), glm::vec3(-1, 0, 0) }, 180);
+
+	/*
 	m_cameraPath.addKeyframe({ glm::vec3(-10, 0, 0), glm::vec3(0, 0, 0) }, 360);
 	m_cameraPath.addKeyframe({ glm::vec3(0, 0, -10), glm::vec3(0, 0, 0) }, 540);
 	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 0), glm::vec3(0, 0, 0) }, 720);
+	*/
 
-	m_cameraPath.setFrontKeyframe({ glm::vec3(0, 0, -10), glm::vec3(0, 0, 0) });
-	m_cameraPath.setBackKeyframe({ glm::vec3(0, 0, 10), glm::vec3(0, 0, 0) });
+	m_cameraPath.setFrontKeyframe({ glm::vec3(10, 0, -20), glm::vec3(-1, 0, 0) });
+	m_cameraPath.setBackKeyframe({ glm::vec3(10, 0, 10), glm::vec3(-1, 0, 0) });
 
 	camera_params.min_frame = m_cameraPath.getMinFrame();
 	camera_params.max_frame = m_cameraPath.getMaxFrame();
@@ -109,7 +112,6 @@ void SceneController::doFrame()
 			renderer.renderOctree(rayObj.get(), camera, *octree);
 		}
 	}
-
 }
 
 void SceneController::updateModels()
@@ -178,9 +180,11 @@ void SceneController::updateCamera()
 	glm::vec3 cameraPos;
 
 	lookAt = glm::vec3(camera_params.lookAtPos[0], camera_params.lookAtPos[1], camera_params.lookAtPos[2]);
-	if (camera_params.doCameraPath) {
-		Keyframe kf = m_cameraPath.interpolateKeyframe(camera_params.current_frame);
+	if (camera_params.lock_to_path) {
+		Keyframe kf = m_cameraPath.interpolateKeyframeLinear(camera_params.current_frame);
+		// Keyframe kf = m_cameraPath.interpolateKeyframeCatmull(camera_params.current_frame);
 		cameraPos = kf.position;
+		lookAt = cameraPos + kf.rotation;
 		glm::vec3 view_dir = glm::normalize(lookAt - cameraPos);
 		float angle = glm::asin(view_dir.y);
 		glm::vec3 axis = glm::cross(default_up, view_dir);
@@ -350,12 +354,41 @@ std::shared_ptr<RayMarchObject> SceneController::setupRayMarchingQuad() {
 	return object;
 }
 
+void SceneController::addKeyframe()
+{
+	glm::vec3 pos = camera.getPosition();
+	glm::vec3 view_dir = camera.getViewDirection();
+
+	m_cameraPath.addKeyframe({ pos, view_dir }, camera_params.add_frame);
+}
+
+void SceneController::resetKeyframes()
+{
+	m_cameraPath.reset();
+}
+
+void SceneController::exportImage(unsigned long time)
+{
+	glm::vec2 dimensions = renderer.getViewPortDimensions();
+	const unsigned int channels = 4;
+	unsigned int size = 1 * channels * dimensions.x * dimensions.y;
+
+	uint8_t* buffer = new uint8_t[size];
+
+	glReadBuffer(GL_FRONT);
+	glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+	GLPrintError();
+	m_Exporter->exportImage(dimensions.y, dimensions.x, channels, buffer, time);
+
+	delete buffer;
+}
+
 void SceneController::exportFrame()
 {
 	if (parameters.writeVideo) {
 		glm::vec2 dimensions = renderer.getViewPortDimensions();
-		if (!m_videoExporter->exportStarted()) {
-			m_videoExporter->startExport();
+		if (!m_Exporter->videoExportStarted()) {
+			m_Exporter->startVideoExport();
 		}
 
 		const unsigned int channels = 4;
@@ -366,13 +399,13 @@ void SceneController::exportFrame()
 		glReadBuffer(GL_FRONT);
 		glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
 		GLPrintError();
-		m_videoExporter->registerFrame(dimensions.y, dimensions.x, channels, buffer);
+		m_Exporter->registerVideoFrame(dimensions.y, dimensions.x, channels, buffer);
 
 		delete buffer;
 	}
 	else {
-		if (m_videoExporter->exportStarted()) {
-			m_videoExporter->endExport();
+		if (m_Exporter->videoExportStarted()) {
+			m_Exporter->endVideoExport();
 		}
 	}
 }
