@@ -258,6 +258,7 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform1f("diffuse_parameter", parameters.diffuse_parameter);
 		shader->setUniform1i("interpolate_voxels", taa_params.interpolate_voxels ? 1 : 0);
 
+		shader->setUniform1i("do_history_parent", taa_params.doHistoryParent ? 1 : 0);
 		shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
 
 		float s1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
@@ -290,6 +291,8 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 			taa_resolve_shader->setUniform1f("taa_alpha", taa_params.alpha);
 			taa_resolve_shader->setUniform1i("history_buffer_depth", taa_params.historyRejectionBufferDepth);
 			taa_resolve_shader->setUniform1i("interpolate_alpha", taa_params.interpolate_alpha);
+
+			taa_resolve_shader->setUniform1i("do_history_parent", taa_params.doHistoryParent ? 1 : 0);
 			taa_resolve_shader->setUniform1i("history_parent_level", taa_params.historyParentRejectionLevel);
 
 			taa_resolve_shader->setUniform1i("do_reprojection", taa_params.do_reprojection ? 1 : 0);

@@ -66,7 +66,40 @@ bool SceneController::init()
 void SceneController::doFrame()
 {
 	updateModels();
+	float prev = camera_params.cameraPos[0];
 	updateCamera();
+	float after = camera_params.cameraPos[0];
+
+
+
+	float cutoff = 0.8;
+	int frame_cutoff = 70;
+	/*
+
+	if (parameters.special_bool && prev == 0.0f && after > 0.0f) {
+		running_frames = 0.0f;
+		num_frames = 0.0f;
+	}
+	float frames = ImGui::GetIO().Framerate;
+	running_frames += frames;
+	num_frames++;
+	*/
+	/*
+	*/
+	if (parameters.special_bool && camera_params.current_frame == frame_cutoff) {
+		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+		exportImage(millisec_since_epoch);
+
+	}
+	/*
+	if (parameters.special_bool && prev < cutoff && after >= cutoff) {
+		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+		exportImage(millisec_since_epoch);
+	}
+	*/
+
 	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
 	{
 		if (activeObject && activeObject->hasRasterizationObject()) {
@@ -109,6 +142,7 @@ void SceneController::doFrame()
 			*/
 			updateRayMarchQuad();
 			auto octree = activeObject->getOctree();
+
 			renderer.renderOctree(rayObj.get(), camera, *octree);
 		}
 	}
@@ -208,6 +242,11 @@ void SceneController::updateCamera()
 
 	if (camera_params.rotateAzimuth) camera_params.cameraPos[0] += camera_params.angle_speed;
 	if (camera_params.rotatePolar) camera_params.cameraPos[1] += camera_params.angle_speed;
+
+	if (parameters.special_bool && camera_params.cameraPos[0] > glm::two_pi<float>()) {
+		float ave_frames = running_frames / num_frames;
+		std::cout << "average frames: " << ave_frames << std::endl;
+	}
 
 	camera_params.cameraPos[0] = camera_params.cameraPos[0] > glm::two_pi<float>() ? 0 : camera_params.cameraPos[0];
 

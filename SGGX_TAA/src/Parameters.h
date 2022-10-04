@@ -62,6 +62,7 @@ typedef struct taa_params_s {
 	bool interpolate_voxels = false;
 	bool do_reprojection = false;
 
+
 	float jiggle_factor = 1;
 
 	int historyRejectionBufferDepth = 1; // Goes from 1 to 4, accept how many past nodes
@@ -77,6 +78,7 @@ typedef struct taa_params_s {
 	bool apply_lod_offset = false;
 	bool visualize_feedback_level = false;
 
+	bool doHistoryParent = false;
 	int historyParentRejectionLevel = 0;	// 0 wrong value eventually, use higher nodes for history rejection ?
 } TAA_params ;
 
@@ -88,6 +90,10 @@ typedef struct params_s {
 	int current_shader_output = 1;
 
 	bool writeVideo = false;
+
+
+	// can be used for whatever quick impl.
+	bool special_bool = false;
 
 	int voxel_count = 30;
 	bool forceReload;

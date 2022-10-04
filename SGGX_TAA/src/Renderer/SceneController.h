@@ -16,6 +16,7 @@
 #include "../Types.h"
 #include "../utils/Exporter.h"
 
+#include "../3rd_party/imgui/imgui.h"
 
 class SceneController
 {
@@ -38,6 +39,9 @@ private:
 	CameraPath m_cameraPath;
 	unsigned int m_cameraPathFrame = 0;
 	bool m_cameraPathActive = false;
+
+	float running_frames;
+	int num_frames;
 
 	Loader loader;
 public:

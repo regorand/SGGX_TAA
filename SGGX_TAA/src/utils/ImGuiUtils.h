@@ -58,6 +58,7 @@ void doImGui(SceneController& controller) {
 		controller.reloadShaders();
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::Checkbox("Special Bool", &parameters.special_bool);
 	ImGui::End();
 
 
@@ -216,11 +217,14 @@ void doImGui(SceneController& controller) {
 		ImGui::SliderFloat("Slider Jiggle", &taa_params.jiggle_factor, 0, 5);
 		ImGui::Spacing();
 		ImGui::Checkbox("Enable History Rejection", &taa_params.doHistoryRejection);
+		ImGui::SameLine();
 		ImGui::Checkbox("Visualize History Rejection", &taa_params.visualizeHistoryRejection);
+
+		ImGui::Checkbox("Interpolate alpha", &taa_params.interpolate_alpha);
 		ImGui::SameLine();
 		ImGui::Checkbox("Vis Egde Detection", &taa_params.visualize_edge_detection);
 		ImGui::SliderInt("History Rejection Buffer Depth", &taa_params.historyRejectionBufferDepth, 1, 4);
-		ImGui::Checkbox("Interpolate alpha", &taa_params.interpolate_alpha);
+		ImGui::Checkbox("Do parent history rejection", &taa_params.doHistoryParent);
 		ImGui::SliderInt("History Rejection Parent Level", &taa_params.historyParentRejectionLevel, 0, 10);
 
 		ImGui::Spacing();

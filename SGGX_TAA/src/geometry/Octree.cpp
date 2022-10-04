@@ -35,7 +35,7 @@ bool Octree::initBuffers()
 	std::cout
 		<< "Size of Nodes:\t" << nodes_size << " Bytes\n"
 		<< "Size of Inners:\t" << inner_size << " Bytes\n"
-		<< "Size of Leaves:\t" << leaves_size << " Bytes\n" 
+		<< "Size of Leaves:\t" << leaves_size << " Bytes\n"
 		<< "Total Size:\t" << sum << " Bytes\n" << std::endl;
 
 	m_nodes_ssb = std::make_shared<ShaderStorageBuffer>(nodes.data(), nodes.size() * sizeof(octree_node), nodes_target);
@@ -222,7 +222,7 @@ bool Octree::buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Objec
 		return false;
 	}
 
-	
+
 
 	// create single leaf node as root
 	init(mesh_object.lower, mesh_object.higher);
@@ -316,7 +316,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		// aggregation values over all children
 		// 
 		// can aggregate density without converting it back, because it is only linearly scaled
-		uint32_t density_sum = 0; 
+		uint32_t density_sum = 0;
 		glm::vec3 normal = glm::vec3(0);
 		int red = 0;
 		int green = 0;
@@ -400,7 +400,7 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 		unsigned int min_index = 10000000;
 		size_t count = 0;
 
-		for (size_t i = 0; i < indices.size(); i+=3) {
+		for (size_t i = 0; i < indices.size(); i += 3) {
 			unsigned int i1 = indices[i];
 			unsigned int i2 = indices[i + 1];
 			unsigned int i3 = indices[i + 2];
@@ -461,9 +461,9 @@ bool Octree::buildSGGXNode(uint32_t node_index, std::vector<unsigned int>& indic
 			glm::mat3 SGGX_mat = buildSGGXMatrix(normal);
 			writeSGGXMatrix(SGGX_mat, result_sggx_leaf);
 
-			result_sggx_leaf.colors = CONVERT_X_VALUE_MASK((int) (color.r * 255))
-				+ CONVERT_Y_VALUE_MASK((int) (color.g * 255))
-				+ CONVERT_Z_VALUE_MASK((int) (color.b * 255));
+			result_sggx_leaf.colors = CONVERT_X_VALUE_MASK((int)(color.r * 255))
+				+ CONVERT_Y_VALUE_MASK((int)(color.g * 255))
+				+ CONVERT_Z_VALUE_MASK((int)(color.b * 255));
 		}
 
 		// result_sggx_leaf.normal[0] = normal.x;
@@ -935,7 +935,7 @@ glm::mat3 Octree::buildSGGXMatrix(sggx_leaf_node node)
 	float Sxx = sigma_x * sigma_x;
 	float Syy = sigma_y * sigma_y;
 	float Szz = sigma_z * sigma_z;
-	
+
 	float Sxy = r_xy * sigma_x * sigma_y;
 	float Sxz = r_xz * sigma_x * sigma_z;
 	float Syz = r_yz * sigma_y * sigma_z;
@@ -1022,8 +1022,8 @@ bool Octree::buildNodeVisualization(octree_visualization& vis, octree_node node,
 glm::vec3 Octree::sampleTexture(Texture_s tex, glm::vec2 uv)
 {
 	if (!tex.buffer) return glm::vec3(0);
-	
-	float dist = 0.01;
+
+	float dist = 0.00;
 
 	float u_lower = uv.x - dist;
 	if (u_lower < 0) u_lower += std::ceil(std::abs(u_lower));
@@ -1055,14 +1055,17 @@ glm::vec3 Octree::sampleTexture(Texture_s tex, glm::vec2 uv)
 	int count = 0;
 	for (size_t x = x_coord_lower; x <= x_coord_upper; x++) {
 		for (size_t y = y_coord_lower; y <= y_coord_upper; y++) {
-			int index = tex.bytesPerPixel * (y * tex.width + x);
+			if (x < tex.width && y < tex.height) {
 
-			unsigned int r = *(tex.buffer + index);
-			unsigned int g = *(tex.buffer + index + 1);
-			unsigned int b = *(tex.buffer + index + 2);
+				int index = tex.bytesPerPixel * (y * tex.width + x);
 
-			color += glm::vec3(((float)r) / 255, ((float)g) / 255, ((float)b) / 255);
-			count++;
+				unsigned int r = *(tex.buffer + index);
+				unsigned int g = *(tex.buffer + index + 1);
+				unsigned int b = *(tex.buffer + index + 2);
+
+				color += glm::vec3(((float)r) / 255, ((float)g) / 255, ((float)b) / 255);
+				count++;
+			}
 		}
 	}
 	return color / glm::vec3(count);

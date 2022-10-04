@@ -24,8 +24,8 @@ uniform int visualize_edge_detection;
 
 uniform int history_buffer_depth;
 uniform int interpolate_alpha;
-uniform int history_parent_level;
 
+uniform int do_history_parent;
 uniform int do_reprojection;
 
 in vec4 world_pos;
@@ -51,6 +51,33 @@ void main() {
     //float active_alpha = thinkIsEdge + (1 - thinkIsEdge) * taa_alpha;
     float active_alpha = taa_alpha;
 
+    if (do_history_parent != 0) {
+        uvec4 buffer_val = imageLoad(rejection_buffer, buffer_index);
+
+        vec4 vis_color = vec4(0, 1, 0, 1);
+        uvec4 new_buffer_val = uvec4(0);
+        if (hit_leaf_index == 0) {
+            active_alpha = thinkIsEdge + (1 - thinkIsEdge) * active_alpha;
+            
+            new_buffer_val = uvec4(buffer_val.r, 0, buffer_val.gb);
+            uint factor = 0; //buffer_val.g + buffer_val.b + buffer_val.a;
+            factor = factor > 0 ? 1 : 0;
+            active_alpha = factor + (1 - factor) * active_alpha;
+        } else if (hit_leaf_index != buffer_val.r) {
+            active_alpha = 1;
+            vis_color = vec4(1, 0, 0, 1);
+            new_buffer_val = uvec4(hit_leaf_index, buffer_val.gba);
+        }
+
+        new_buffer_val = thinkIsEdge * uvec4(0) + (1 - thinkIsEdge) * new_buffer_val;
+
+        imageStore(rejection_buffer, buffer_index, new_buffer_val);
+        if (visualize_history_rejection != 0) {
+            out_color = vis_color;
+            return;
+        }
+    }
+
 
     if (history_rejection_active != 0) {
         uvec4 buffer_val = imageLoad(rejection_buffer, buffer_index);
@@ -62,7 +89,7 @@ void main() {
             active_alpha = thinkIsEdge + (1 - thinkIsEdge) * active_alpha;
             // new_buffer_val = buffer_val;
             new_buffer_val = uvec4(0, buffer_val.r, buffer_val.g, buffer_val.b);
-            uint factor = buffer_val.r * buffer_val.g + buffer_val.b + buffer_val.a;
+            uint factor = buffer_val.r + buffer_val.g + buffer_val.b + buffer_val.a;
             factor = factor > 0 ? 1 : 0;
             active_alpha = factor + (1 - factor) * active_alpha;
         }
@@ -101,15 +128,17 @@ void main() {
     }
 
     int history_index = buffer_index;
-    
+
+
     if (do_reprojection > 0) {
         float motion_valid_factor = motion_vector.a;
         active_alpha = motion_valid_factor * active_alpha + (1 - motion_valid_factor);
 
 
-
-        float base = 2;
-        float val = pow(base, -buffer_space_length);
+        float e = 2.71828182846;
+        float denom = 1;
+        float val = pow(e, -buffer_space_length / denom);
+        //val = 1;
         active_alpha = active_alpha * val + (1 - val);
         //out_color = vec4(buffer_space_length, buffer_space_length, buffer_space_length, 1);
 
@@ -139,7 +168,7 @@ void main() {
 
     out_color = visualize_active_alpha * active_alpha + (1 - visualize_active_alpha) * out_color;
 
-    out_color = visualize_edge_detection * thinkIsEdge + (1 - visualize_edge_detection) * out_color;
+    out_color = /* vec4(0, 0, 0, 1) */ visualize_edge_detection * thinkIsEdge + (1 - visualize_edge_detection) * out_color;
 
     out_color = visualize_motion_vectors * vec4(abs(motion_vector.xy), 0, 1) + (1 - visualize_motion_vectors) * out_color;
 }

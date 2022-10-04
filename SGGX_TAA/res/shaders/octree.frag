@@ -85,6 +85,7 @@ uniform int vertical_pixels;
 uniform int num_iterations;
 
 // TAA Uniforms
+uniform int do_history_parent;
 uniform int history_parent_level;
 
 // uniform samplerBuffer history_buffer;
@@ -692,6 +693,7 @@ void main() {
     if (base_factor == 0) {
         imageStore(space_hit_buffer, buffer_index, vec4(0));
         imageStore(node_hit_buffer, buffer_index, uvec4(0));
+        imageStore(render_buffer, buffer_index, vec4(0));
         discard;
     }
 
@@ -775,8 +777,8 @@ void main() {
 
 
     // From here: TAA 
-    if (history_parent_level > 0) {
-        int stack_node_index = max(parent_stack.current_size - (history_parent_level - 1), 0);
+    if (do_history_parent != 0 && history_parent_level > 0) {
+        int stack_node_index = max(parent_stack.current_size - history_parent_level, 0);
         hit_leaf_index = cherry_pick(parent_stack, stack_node_index);
     }
 
@@ -833,9 +835,15 @@ void main() {
     }
 
     offset *= step_0(hit_leaf_index);//  * step_0(previous_hit_leaf_index);
+    if (previous_hit_leaf_index == 0) {
+        offset = 1;
+    }
 
     if (visualize_feedback_level != 0) {
-        out_color = vec4(offset, 0, 0, 1);
+        out_color = vec4(offset / 20, 0, 0, 1);
+        if (offset == 0) {
+           out_color = vec4(0);
+        }
     } else {
         imageStore(lod_diff_buffer, buffer_index, vec4(offset, 0, 0, 0));
     }
