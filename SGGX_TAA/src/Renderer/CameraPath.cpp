@@ -4,6 +4,8 @@
 
 #include "glm/gtx/compatibility.hpp"
 
+#include "../Parameters.h"
+
 CameraPath::CameraPath()
 {
 }
@@ -17,6 +19,8 @@ void CameraPath::addKeyframe(Keyframe keyframe, unsigned int frame)
     m_keyframes[frame] = keyframe;
     min_frame = glm::min(frame, min_frame);
     max_frame = glm::max(frame, max_frame);
+    camera_params.max_frame = max_frame;
+    camera_params.min_frame = min_frame;
 }
 
 Keyframe CameraPath::interpolateKeyframeLinear(unsigned int frame)

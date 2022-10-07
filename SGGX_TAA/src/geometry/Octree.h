@@ -153,8 +153,6 @@ public:
 
 	size_t getMaxDepth();
 
-	bool build(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Object_t& mesh_object);
-	bool createSGGX();
 
 	bool buildSGGXTree(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Object_t& mesh_object);
 	bool buildSGGXNode(uint32_t node_index, std::vector<unsigned int> &indices, TreeBuildParams params, sggx_leaf_node& result_sggx_leaf);
@@ -163,6 +161,9 @@ public:
 
 	bool getLeafAt(glm::vec3 position, obj_leaf_node** target);
 
+	
+	bool build(size_t max_depth, size_t maxPointsPerLeaf, Mesh_Object_t& mesh_object);
+	bool createSGGX();
 	bool splitNode(uint32_t node_index,
 		glm::vec3 lower,
 		glm::vec3 higher,
@@ -171,6 +172,7 @@ public:
 		size_t max_depth);
 
 	bool convertNode(uint32_t node_index, sggx_leaf_node* value, size_t current_depth);
+	
 
 	glm::vec3 getTreeLower();
 	glm::vec3 getTreeHigher();

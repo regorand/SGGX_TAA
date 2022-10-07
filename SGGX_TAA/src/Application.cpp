@@ -69,7 +69,6 @@ int main(void)
     initParams();
     initImGui();
 
-    glfwSwapInterval(0);
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -85,6 +84,9 @@ int main(void)
 
         ImGui::Render();
         glFinish();
+
+        glfwSwapInterval(parameters.vsync);
+
         ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
 
         /* Swap front and back buffers */

@@ -19,21 +19,6 @@ bool SceneController::init()
 {
 	CameraPath path;
 
-	m_cameraPath.addKeyframe({ glm::vec3(10, 0, -10), glm::vec3(-1, 0, 0) }, 0);
-	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 10), glm::vec3(-1, 0, 0) }, 180);
-
-	/*
-	m_cameraPath.addKeyframe({ glm::vec3(-10, 0, 0), glm::vec3(0, 0, 0) }, 360);
-	m_cameraPath.addKeyframe({ glm::vec3(0, 0, -10), glm::vec3(0, 0, 0) }, 540);
-	m_cameraPath.addKeyframe({ glm::vec3(10, 0, 0), glm::vec3(0, 0, 0) }, 720);
-	*/
-
-	m_cameraPath.setFrontKeyframe({ glm::vec3(10, 0, -20), glm::vec3(-1, 0, 0) });
-	m_cameraPath.setBackKeyframe({ glm::vec3(10, 0, 10), glm::vec3(-1, 0, 0) });
-
-	camera_params.min_frame = m_cameraPath.getMinFrame();
-	camera_params.max_frame = m_cameraPath.getMaxFrame();
-
 	/*
 	sceneLights.push_back(std::make_shared<Light>(glm::vec3(10, 0, 0), glm::vec3(1, 1, 1)));
 	sceneLights.push_back(std::make_shared<Light>(glm::vec3(0, 10, 0), glm::vec3(1, 1, 1)));
@@ -70,35 +55,24 @@ void SceneController::doFrame()
 	updateCamera();
 	float after = camera_params.cameraPos[0];
 
-
-
-	float cutoff = 3.1;
-	int frame_cutoff = 70;
 	/*
-
-	if (parameters.special_bool && prev == 0.0f && after > 0.0f) {
-		running_frames = 0.0f;
-		num_frames = 0.0f;
-	}
 	float frames = ImGui::GetIO().Framerate;
 	running_frames += frames;
 	num_frames++;
 	*/
-	/*
-	if (parameters.special_bool && camera_params.current_frame == frame_cutoff) {
+
+	
+	if (parameters.export_on_keyframe && camera_params.current_frame == parameters.target_key_frame) {
 		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 		exportImage(millisec_since_epoch);
 
 	}
-	*/
-	if (parameters.special_bool && prev < cutoff && after >= cutoff) {
+	if (parameters.export_on_azimuth && prev < parameters.target_azimuth && after >= parameters.target_azimuth) {
 		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 		exportImage(millisec_since_epoch);
 	}
-	/*
-	*/
 
 	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
 	{

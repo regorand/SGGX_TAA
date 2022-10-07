@@ -1,9 +1,0 @@
-# Blender MTL File: 'None'
-# Material Count: 1
-
-newmtl Material
-Ns 250
-Ka 0.3 0.3 0.3
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-map_Kd default.png

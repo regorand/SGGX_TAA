@@ -91,10 +91,17 @@ typedef struct params_s {
 
 	bool writeVideo = false;
 
+	bool export_on_azimuth = false;
+	bool export_on_keyframe = false;
+
+	float target_azimuth = 0;
+	int target_key_frame = 0;
+
 
 	// can be used for whatever quick impl.
 	bool special_bool = false;
 
+	bool vsync = true;
 	int voxel_count = 30;
 	bool forceReload;
 	bool renderVoxelsAABB = false;

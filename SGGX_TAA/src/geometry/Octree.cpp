@@ -132,8 +132,15 @@ bool Octree::init(glm::vec3 lower, glm::vec3 higher)
 	}
 	glm::vec3 diff = higher - lower;
 	float max_dimension = glm::max(diff.x, glm::max(diff.y, diff.z));
+
+	glm::vec3 diffs_to_square = glm::vec3(max_dimension) - diff;
+
+	m_lower = lower - (diffs_to_square / glm::vec3(2));
+	m_higher = higher + (diffs_to_square / glm::vec3(2));
+	/*
 	m_lower = lower;
 	m_higher = m_lower + glm::vec3(max_dimension);
+	*/
 
 	uint32_t index = 0;
 	uint32_t type = 1;

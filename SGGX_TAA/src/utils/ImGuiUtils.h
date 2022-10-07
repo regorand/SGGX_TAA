@@ -58,7 +58,8 @@ void doImGui(SceneController& controller) {
 		controller.reloadShaders();
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::Checkbox("Special Bool", &parameters.special_bool);
+	ImGui::Checkbox("VSync", &parameters.vsync);
+
 	ImGui::End();
 
 
@@ -78,9 +79,11 @@ void doImGui(SceneController& controller) {
 
 	//doCombo("Render Type", parameters.active_render_type, render_types_2);
 	//doCombo("Shader Output Type OLD", parameters.active_shader_output, parameters.active_shader_output_index, shader_output_types);
-	ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
-	ImGui::SameLine();
-	ImGui::Checkbox("Do Camera Path", &camera_params.doCameraPath);
+	// ImGui::Checkbox("Render Voxels AABB", &parameters.renderVoxelsAABB);
+	// ImGui::SameLine();
+	ImGui::Checkbox("Show camera path menu", &camera_params.doCameraPath);
+
+	ImGui::Checkbox("Export Video", &parameters.writeVideo);
 	if (ImGui::Button("Export Frame")) {
 		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		if (millisec_since_epoch - parameters.last_image_export > 500) {
@@ -88,12 +91,24 @@ void doImGui(SceneController& controller) {
 			controller.exportImage(millisec_since_epoch);
 		}
 	}
+	ImGui::Checkbox("Export on target azimuth angle", &parameters.export_on_azimuth);
+	ImGui::InputFloat("Azimuth Target", &parameters.target_azimuth);
+	parameters.target_azimuth = glm::max(0.0f, glm::min(glm::two_pi<float>(), parameters.target_azimuth));
+	ImGui::Spacing();
+
+	ImGui::Checkbox("Export on keyframe", &parameters.export_on_keyframe);
+	ImGui::InputInt("Keyframe Target", &parameters.target_key_frame);
+	bool export_on_azimuth = false;
+	bool export_on_keyframe = false;
+
+	float target_azimuth = 0;
+	int target_key_frame = 0;
+	
 	ImGui::SameLine();
-	ImGui::Checkbox("Export Video", &parameters.writeVideo);
 
 	ImGui::NewLine();
-	ImGui::Checkbox("Flat Shade", &parameters.flat_shade);
-	ImGui::SliderInt("Voxel Count", &parameters.voxel_count, 10, 300);
+	//ImGui::Checkbox("Flat Shade", &parameters.flat_shade);
+	//ImGui::SliderInt("Voxel Count", &parameters.voxel_count, 10, 300);
 	ImGui::SliderFloat("SGGX Roughness", &octree_params.roughness, 0, 1);
 	if (loadableObjs.size() > 0) {
 		doCombo("Loadable Obj", parameters.selected_file, loadableObjs);
@@ -192,12 +207,12 @@ void doImGui(SceneController& controller) {
 
 		ImGui::SliderInt("Number Iterations", &octree_params.num_iterations, 1, 128);
 
-		ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
+		// ImGui::SliderInt("Roentgen Denom", &octree_params.roentgen_denominator, 1, 100);
 		ImGui::Checkbox("Auto LOD", &octree_params.auto_lod);
-		ImGui::SameLine();
-		ImGui::Checkbox("smooth LOD", &octree_params.smooth_lod);
-		ImGui::Checkbox("Interpolate voxels", &taa_params.interpolate_voxels);
-		ImGui::SliderFloat("Diffuse Parameter", &parameters.diffuse_parameter, 0, 1);
+		// ImGui::SameLine();
+		// ImGui::Checkbox("smooth LOD", &octree_params.smooth_lod);
+		// ImGui::Checkbox("Interpolate voxels", &taa_params.interpolate_voxels);
+		ImGui::SliderFloat("Artificial Diffuse Parameter", &parameters.diffuse_parameter, 0, 1);
 
 		ImGui::End();
 
@@ -207,28 +222,29 @@ void doImGui(SceneController& controller) {
 		ImGui::SliderFloat("Alpha", &taa_params.alpha, 0.0, 1.0);
 		ImGui::Checkbox("Enable TAA", &taa_params.taa_active);
 		ImGui::SameLine();
-		ImGui::Checkbox("Vis active alpha", &taa_params.visualize_active_alpha);
+		ImGui::Checkbox("Visualize active alpha", &taa_params.visualize_active_alpha);
 		ImGui::Spacing();
-		ImGui::Checkbox("Disable Jiggle", &taa_params.disable_jiggle);
-		ImGui::Checkbox("reprojection", &taa_params.do_reprojection);
+		ImGui::Checkbox("Disable Jitter", &taa_params.disable_jiggle);
+		ImGui::Checkbox("Enable reprojection", &taa_params.do_reprojection);
 		ImGui::SameLine();
-		ImGui::Checkbox("Vis motion vectors", &taa_params.visualize_motion_vectors);
+		ImGui::Checkbox("Visualize motion vectors", &taa_params.visualize_motion_vectors);
 
-		ImGui::SliderFloat("Slider Jiggle", &taa_params.jiggle_factor, 0, 5);
+		ImGui::SliderFloat("Jitter Strength", &taa_params.jiggle_factor, 0, 5);
 		ImGui::Spacing();
-		ImGui::Checkbox("Enable History Rejection", &taa_params.doHistoryRejection);
-		ImGui::SameLine();
 		ImGui::Checkbox("Visualize History Rejection", &taa_params.visualizeHistoryRejection);
-
-		ImGui::Checkbox("Interpolate alpha", &taa_params.interpolate_alpha);
-		ImGui::SameLine();
-		ImGui::Checkbox("Vis Egde Detection", &taa_params.visualize_edge_detection);
+		ImGui::Checkbox("Enable Deep Buffer History Rejection", &taa_params.doHistoryRejection);
 		ImGui::SliderInt("History Rejection Buffer Depth", &taa_params.historyRejectionBufferDepth, 1, 4);
+		// ImGui::SameLine();
+
+		// ImGui::Checkbox("Interpolate alpha", &taa_params.interpolate_alpha);
+		// ImGui::SameLine();
+		ImGui::Checkbox("Visualize Egde Detection", &taa_params.visualize_edge_detection);
+
 		ImGui::Checkbox("Do parent history rejection", &taa_params.doHistoryParent);
 		ImGui::SliderInt("History Rejection Parent Level", &taa_params.historyParentRejectionLevel, 0, 10);
 
 		ImGui::Spacing();
-		ImGui::Checkbox("Apply offset", &taa_params.apply_lod_offset);
+		ImGui::Checkbox("Apply dynamic LOD offset", &taa_params.apply_lod_offset);
 		ImGui::SameLine();
 		ImGui::Checkbox("Visualize LoD Offset", &taa_params.visualize_feedback_level);
 		std::string current_feedback_level = LoD_feedback_types[taa_params.Lod_feedback_level];
