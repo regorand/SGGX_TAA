@@ -17,6 +17,15 @@ glm::mat4 Camera::getViewMatrix()
 	return glm::lookAt(position, position + viewDirection, up);
 }
 
+void Camera::saveViewMat()
+{
+	m_prev_view_mat = getViewMatrix();
+}
+
+glm::mat4 Camera::getPrevViewMatrix() {
+	return m_prev_view_mat;
+}
+
 glm::vec3 Camera::getPosition()
 {
 	return position;

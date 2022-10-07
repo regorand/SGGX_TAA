@@ -53,6 +53,8 @@ uniform int nodes_size;
 uniform int inner_nodes_size;
 uniform int leaves_size;
 
+uniform vec2 jiggle_offset;
+
 uniform int max_tree_depth;
 
 uniform int min_render_depth;
@@ -104,6 +106,7 @@ uniform vec3 higher;
 uniform vec3 camera_pos;
 uniform vec3 camera_view_dir;
 uniform mat4 view_matrix;
+uniform mat4 prev_view_matrix;
 
 uniform vec3 up_vector;
 
@@ -787,8 +790,10 @@ void main() {
     imageStore(render_buffer, buffer_index, vec4(0));
     
     vec4 previous_hit = imageLoad(space_hit_buffer, buffer_index);
-
-    imageStore(space_hit_buffer, buffer_index, vec4(position, 1));
+    
+    if (hit_leaf_index != 0) {
+        imageStore(space_hit_buffer, buffer_index, vec4(position, sign(hit_leaf_index)));
+    }
     
     vec4 h_previous_hit = vec4(previous_hit.xyz, 1);
     vec4 h_current_hit = vec4(position, 1);
@@ -809,12 +814,40 @@ void main() {
 
     buffer_space_motion *= sign(hit_leaf_index);
 
-    float diff_3d_length = length(previous_hit.xyz - position);
+    float diff_3d_length = 0;
+    
+    if (hit_leaf_index == 0 && previous_hit.a != 0) {        
+        float acc_dist = length(camera_pos - previous_hit.xyz); // TODO position kann 0 sein
 
+        float accurate_thales = acc_dist / length(view_vector);
+
+        vec3 tangent_quad_plane = normalize(cross(camera_view_dir, up_vector));
+
+        vec3 world_space_jiggle = jiggle_offset.x * tangent_quad_plane + jiggle_offset.y * up_vector;
+
+        vec3 world_jiggle_scaled = world_space_jiggle * accurate_thales;
+        float jiggle_dist = length(jiggle_offset) * accurate_thales;
+
+        float d = dot(previous_hit.xyz, camera_view_dir);
+        float denom = dot(view_direction, camera_view_dir);
+
+        float target_t = (d - dot(camera_pos, camera_view_dir)) / denom;
+
+        vec3 pos = camera_pos + target_t * view_direction;
+        vec3 diff_vector = previous_hit.xyz - pos;
+        float frame_diff_length = length(diff_vector);
+
+        diff_3d_length = length(world_jiggle_scaled - diff_vector);
+    } else if (hit_leaf_index != 0 && previous_hit.a != 0){
+        diff_3d_length =  length(previous_hit.xyz - position);
+    }
+
+    // out_color = 10 * vec4(diff, diff, diff, 1);
+    // return;
     
 
     float offset = 0;
-    if (LoD_feedback_types == 1) {
+    if (LoD_feedback_types == 1 && hit_leaf_index != 0) {
         float buffer_space_dist = length(buffer_space_motion.xy);
 
         offset = max(0, log2(buffer_space_dist));
@@ -835,12 +868,10 @@ void main() {
     }
 
     offset *= step_0(hit_leaf_index);//  * step_0(previous_hit_leaf_index);
-    if (previous_hit_leaf_index == 0) {
-        offset = 1;
-    }
+    
 
     if (visualize_feedback_level != 0) {
-        out_color = vec4(offset / 20, 0, 0, 1);
+        out_color = vec4(offset, 0, 0, 1);
         if (offset == 0) {
            out_color = vec4(0);
         }
@@ -854,7 +885,7 @@ void main() {
 
     vec4 motion_buffer_content = vec4(buffer_space_motion.xy, diff_3d_length, valid_motion_factor);
 
-    int origin_buffer_index =   valid_motion_factor * (estimated_history_origin.y * horizontal_pixels + estimated_history_origin.x)
+    int origin_buffer_index = valid_motion_factor * (estimated_history_origin.y * horizontal_pixels + estimated_history_origin.x)
                                 + (1 - valid_motion_factor) * buffer_index;
 
     imageStore(motion_vector_buffer, origin_buffer_index, motion_buffer_content);

@@ -84,6 +84,7 @@ int main(void)
         controller.doFrame();
 
         ImGui::Render();
+        glFinish();
         ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
 
         /* Swap front and back buffers */
@@ -91,6 +92,7 @@ int main(void)
 
         /* Poll for and process events */
         glfwPollEvents();
+        glFinish();
     }
 
     ImGui_ImplGlfwGL3_Shutdown();

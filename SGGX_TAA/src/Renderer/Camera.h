@@ -14,6 +14,8 @@ private:
 
 	glm::vec3 up;
 
+	glm::mat4 m_prev_view_mat;
+
 public:
 	Camera();
 	Camera(glm::vec3 position, glm::vec3 viewDirection);
@@ -33,5 +35,8 @@ public:
 	void getScreenCoveringQuadData(std::vector<glm::vec3>& vertices, float* width, float* height);
 
 	void update();
+
+	void saveViewMat();
+	glm::mat4 getPrevViewMatrix();
 };
 

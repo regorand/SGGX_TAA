@@ -192,6 +192,8 @@ void Renderer::renderOctree(RayMarchObject* object, Camera& camera, Octree& octr
 		shader->setUniform3f("higher", octree.getTreeHigher());
 
 		shader->setUniformMat4f("view_matrix", camera.getViewMatrix());
+		
+		// shader->setUniformMat4f("prev_view_matrix", camera.getPrevViewMatrix());
 
 		GLint data[4];
 		glGetIntegerv(GL_VIEWPORT, data);

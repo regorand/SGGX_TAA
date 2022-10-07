@@ -72,7 +72,7 @@ void SceneController::doFrame()
 
 
 
-	float cutoff = 0.8;
+	float cutoff = 3.1;
 	int frame_cutoff = 70;
 	/*
 
@@ -85,19 +85,19 @@ void SceneController::doFrame()
 	num_frames++;
 	*/
 	/*
-	*/
 	if (parameters.special_bool && camera_params.current_frame == frame_cutoff) {
 		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 		exportImage(millisec_since_epoch);
 
 	}
-	/*
+	*/
 	if (parameters.special_bool && prev < cutoff && after >= cutoff) {
 		auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 		exportImage(millisec_since_epoch);
 	}
+	/*
 	*/
 
 	if (parameters.current_render_type_index == RASTERIZATION_RENDER_INDEX)
@@ -186,6 +186,7 @@ void SceneController::updateModels()
 
 void SceneController::updateCamera()
 {
+	camera.saveViewMat();
 	updateCameraPathState(camera_params.doCameraPath);
 
 	float dist = camera_params.camera_dist * camera_params.camera_dist;
